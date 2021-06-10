@@ -1,12 +1,9 @@
 package client
 
 import (
-	"context"
 	"fmt"
 	"strings"
-	"time"
 
-	"cloud.google.com/go/spanner"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/mattn/go-runewidth"
@@ -98,19 +95,4 @@ func (m model) View() string {
 	footer += strings.Repeat("─", m.viewport.Width-runewidth.StringWidth(footer))
 
 	return fmt.Sprintf("%s\n%s\n%s", header, m.viewport.View(), footer)
-}
-
-type db struct {
-	ctx    context.Context
-	client *spanner.Client
-}
-
-func (db db) retrieveUsers() tea.Cmd {
-	retrive := func(t time.Time) tea.Msg {
-		users := getUsers(db.ctx, db.client)
-		richPeople := usersToRiches(users)
-		return richPeople
-	}
-
-	return tea.Tick(time.Duration(time.Second), retrive)
 }
