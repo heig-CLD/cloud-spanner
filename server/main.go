@@ -81,7 +81,7 @@ func StartServer() {
 	iterator.Do(func(row *spanner.Row) error {
 		var user user
 		row.ToStruct(&user)
-		println("Name: " + user.Name + " Money: " + strconv.FormatInt(user.Money, 10))
+		println("Name: " + user.Name + " Money: " + strconv.FormatInt(user.Money, 10) + " Id: " + string(user.Id))
 		return nil
 	})
 }
