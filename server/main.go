@@ -8,6 +8,12 @@ import (
 	"strconv"
 )
 
+type user struct {
+	Id    []byte `spanner:"Id"`
+	Name  string `spanner:"Name"`
+	Money int64  `spanner:"Money"`
+}
+
 type gcloudConfig struct {
 	project  string
 	instance string
@@ -44,33 +50,38 @@ func StartServer() {
 
 	defer client.Close()
 
-	client.ReadWriteTransaction(ctx, func(ctx context.Context, transaction *spanner.ReadWriteTransaction) error {
+	_, err = client.ReadWriteTransaction(ctx, func(ctx context.Context, transaction *spanner.ReadWriteTransaction) error {
 
 		uuidAlice, _ := uuid.New().MarshalBinary()
-		columns := []string{"Id", "Name", "Money"}
-		values := []interface{}{uuidAlice, "Alice", 400}
 
-		mutations := []*spanner.Mutation{
-			spanner.InsertOrUpdate("Users", columns, values),
+		mut, err := spanner.InsertOrUpdateStruct("Users", user{
+			Id:    uuidAlice,
+			Name:  "Alice",
+			Money: 400,
+		})
+
+		if err != nil {
+			return err
 		}
 
-		err := transaction.BufferWrite(mutations)
+		mutations := []*spanner.Mutation{mut}
+
+		err = transaction.BufferWrite(mutations)
 		if err != nil {
 			return err
 		}
 		return nil
 	})
 
+	if err != nil {
+		println(err.Error())
+	}
+
 	iterator := client.Single().Query(ctx, spanner.NewStatement("SELECT * FROM Users"))
 	iterator.Do(func(row *spanner.Row) error {
-		println("Row size: " + strconv.Itoa(row.Size()))
-		var name string
-		var money int
-
-		row.ColumnByName("Name", &name)
-		row.ColumnByName("Money", &money)
-
-		println("Name: " + name + " Money: " + strconv.Itoa(money))
+		var user user
+		row.ToStruct(&user)
+		println("Name: " + user.Name + " Money: " + strconv.FormatInt(user.Money, 10))
 		return nil
 	})
 }
