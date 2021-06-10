@@ -27,4 +27,5 @@ func StartServer() {
 	showUsers(ctx, client)
 	showItems(ctx, client)
 	showOffers(ctx, client)
+
 }

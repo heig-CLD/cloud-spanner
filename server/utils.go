@@ -37,6 +37,17 @@ func deleteDBContent(ctx context.Context, client *spanner.Client) {
 	}
 }
 
+/*
+func createItem(ctx context.Context, client *spanner.Client, userId []byte) (commitTimestamp time.Time, err error) {
+	id, _ := uuid.New().MarshalBinary()
+	mut, err := spanner.InsertOrUpdateStruct("Users", shared.Item{id, "", userId})
+}
+
+func getCars() {
+
+}
+*/
+
 func createUsers(ctx context.Context, client *spanner.Client, n int, maxMoney int64) (commitTimestamp time.Time, err error) {
 	return client.ReadWriteTransaction(ctx, func(ctx context.Context, transaction *spanner.ReadWriteTransaction) error {
 
@@ -75,6 +86,41 @@ func getAllNames() ([]string, error) {
 	}
 
 	return allNames, nil
+}
+
+/// transfer takes a random amount of money from the person with the from identifier, and transfers it to the person
+/// with the to identifier.
+func transfer(from []byte, to []byte, ctx context.Context, client spanner.Client) error {
+	_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+
+		fetchUser := func(id []byte) (shared.User, error) {
+			// TODO : Fetch the right columns.
+			row, err := txn.ReadRow(ctx, "Users", spanner.Key{}, []string{})
+			if err != nil {
+				return shared.User{}, err
+			}
+			var user shared.User
+			err = row.ToStruct(&user)
+			return user, err
+		}
+
+		// Fetch both users individually.
+
+		user1, err := fetchUser(from)
+		if err != nil {
+			return err
+		}
+
+		user2, err := fetchUser(to)
+		if err != nil {
+			return err
+		}
+
+		// TODO : Update the database.
+		println(user1.Money + user2.Money)
+		return nil
+	})
+	return err
 }
 
 func randomUsers(n int, maxMoney int64) []shared.User {
