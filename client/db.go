@@ -14,11 +14,13 @@ type db struct {
 	client *spanner.Client
 }
 
+type userMsg []Rich
+
 func (db db) retrieveUsers() tea.Cmd {
 	retrive := func(t time.Time) tea.Msg {
 		users := db.getUsers()
 		richPeople := usersToRiches(users)
-		return richPeople
+		return userMsg(richPeople)
 	}
 
 	return tea.Tick(time.Duration(time.Second), retrive)

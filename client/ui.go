@@ -57,19 +57,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.err = msg
 		return m, nil
 
+	case userMsg:
+		m.richPeople = msg
+		m.updateViewportContent()
+		return m, nil
+
 	case tea.WindowSizeMsg:
 		margins := 10
 
 		if !m.ready {
-			content := ""
-			for _, r := range m.richPeople {
-				content += fmt.Sprintf("%s", r.View())
-				content += "\n"
-			}
-
 			m.viewport = viewport.Model{Width: msg.Width - margins, Height: msg.Height - margins}
 			m.viewport.YPosition = 100
-			m.viewport.SetContent(content)
 			m.ready = true
 		} else {
 			m.viewport.Width = msg.Width - margins
@@ -95,4 +93,15 @@ func (m model) View() string {
 	footer += strings.Repeat("─", m.viewport.Width-runewidth.StringWidth(footer))
 
 	return fmt.Sprintf("%s\n%s\n%s", header, m.viewport.View(), footer)
+}
+
+func (m model) updateViewportContent() {
+	content := ""
+
+	for _, r := range m.richPeople {
+		content += fmt.Sprintf("%s", r.View())
+		content += "\n"
+	}
+
+	m.viewport.SetContent(content)
 }
