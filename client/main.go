@@ -1,6 +1,9 @@
 package client
 
 import (
+	"cloud-spanner/shared"
+	"cloud.google.com/go/spanner"
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -24,8 +27,10 @@ type model struct {
 	viewport   viewport.Model
 }
 
-func initialModel() model {
-	richPeople := RandomRichPeople(100)
+func initialModel(ctx context.Context, client *spanner.Client) model {
+
+	users := getUsers(ctx, client)
+	richPeople := usersToRiches(users)
 	viewport := viewport.Model{Width: 100, Height: 300}
 
 	return model{richPeople: richPeople, viewport: viewport}
@@ -93,7 +98,20 @@ func (m model) View() string {
 }
 
 func StartClient() {
-	p := tea.NewProgram(initialModel(), tea.WithAltScreen(), tea.WithMouseAllMotion())
+	// Setup spanner stuff
+	project := shared.LocalConfig()
+
+	ctx := context.TODO()
+	client, err := spanner.NewClient(ctx, project.Uri())
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer client.Close()
+
+	// Tea stuff
+	p := tea.NewProgram(initialModel(ctx, client), tea.WithAltScreen(), tea.WithMouseAllMotion())
 	if err := p.Start(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)

@@ -3,6 +3,7 @@ package server
 import (
 	"bufio"
 	_ "bufio"
+	"cloud-spanner/shared"
 	"cloud.google.com/go/spanner"
 	"context"
 	"github.com/google/uuid"
@@ -73,14 +74,14 @@ func getAllNames() ([]string, error) {
 	return allNames, nil
 }
 
-func RandomUsers(n int) []user {
+func RandomUsers(n int) []shared.User {
 	rand.Seed(20)
 	names, err := getAllNames()
 	if err != nil {
 		log.Panicf("%s", err.Error())
 	}
 
-	var people []user
+	var people []shared.User
 	for i := 0; i < n; i++ {
 		randIndex := rand.Intn(len(names))
 		name := names[randIndex]
@@ -88,7 +89,7 @@ func RandomUsers(n int) []user {
 
 		id, _ := uuid.New().MarshalBinary()
 
-		people = append(people, user{Id: id, Name:  name, Money: randMoney})
+		people = append(people, shared.User{Id: id, Name: name, Money: randMoney})
 	}
 
 	return people
