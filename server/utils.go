@@ -11,10 +11,11 @@ import (
 	"math/rand"
 	"os"
 	_ "os"
+	"strconv"
 	"time"
 )
 
-func DeleteDBContent(ctx context.Context, client *spanner.Client) {
+func deleteDBContent(ctx context.Context, client *spanner.Client) {
 	_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, transaction *spanner.ReadWriteTransaction) error {
 
 		mut := spanner.Delete("Users", spanner.AllKeys())
@@ -37,7 +38,7 @@ func DeleteDBContent(ctx context.Context, client *spanner.Client) {
 func createUsers(ctx context.Context, client *spanner.Client, n int, maxMoney int64) (commitTimestamp time.Time, err error) {
 	return client.ReadWriteTransaction(ctx, func(ctx context.Context, transaction *spanner.ReadWriteTransaction) error {
 
-		users := RandomUsers(n, maxMoney)
+		users := randomUsers(n, maxMoney)
 		var mutations []*spanner.Mutation
 		for _, u := range users {
 			mut, err := spanner.InsertOrUpdateStruct("Users", u)
@@ -74,7 +75,7 @@ func getAllNames() ([]string, error) {
 	return allNames, nil
 }
 
-func RandomUsers(n int, maxMoney int64) []shared.User {
+func randomUsers(n int, maxMoney int64) []shared.User {
 	rand.Seed(20)
 	names, err := getAllNames()
 	if err != nil {
@@ -93,4 +94,34 @@ func RandomUsers(n int, maxMoney int64) []shared.User {
 	}
 
 	return people
+}
+
+func showUsers(ctx context.Context, client *spanner.Client) {
+	iterator := client.Single().Query(ctx, spanner.NewStatement("SELECT * FROM Users ORDER BY Money Desc"))
+	iterator.Do(func(row *spanner.Row) error {
+		var user shared.User
+		row.ToStruct(&user)
+		println("User - Name: " + user.Name + " Money: " + strconv.FormatInt(user.Money, 10))
+		return nil
+	})
+}
+
+func showItems(ctx context.Context, client *spanner.Client) {
+	iterator := client.Single().Query(ctx, spanner.NewStatement("SELECT * FROM Items"))
+	iterator.Do(func(row *spanner.Row) error {
+		var item shared.Item
+		row.ToStruct(&item)
+		println("Item - Description: " + item.Description)
+		return nil
+	})
+}
+
+func showOffers(ctx context.Context, client *spanner.Client) {
+	iterator := client.Single().Query(ctx, spanner.NewStatement("SELECT * FROM Offers"))
+	iterator.Do(func(row *spanner.Row) error {
+		var offer shared.Offer
+		row.ToStruct(&offer)
+		println("Offer - Price: " + strconv.FormatInt(offer.Price, 10))
+		return nil
+	})
 }

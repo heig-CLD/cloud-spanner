@@ -5,22 +5,18 @@ import (
 	spanner "cloud.google.com/go/spanner"
 	"context"
 	_ "fmt"
-	"strconv"
 )
 
 func StartServer() {
 	project := shared.LocalConfig()
-
 	ctx := context.TODO()
 	client, err := spanner.NewClient(ctx, project.Uri())
-
 	if err != nil {
 		panic(err)
 	}
-
 	defer client.Close()
 
-	DeleteDBContent(ctx, client)
+	deleteDBContent(ctx, client)
 
 	_, err = createUsers(ctx, client, 20, 10000)
 
@@ -28,11 +24,7 @@ func StartServer() {
 		println(err.Error())
 	}
 
-	iterator := client.Single().Query(ctx, spanner.NewStatement("SELECT * FROM Users"))
-	iterator.Do(func(row *spanner.Row) error {
-		var user shared.User
-		row.ToStruct(&user)
-		println("Name: " + user.Name + " Money: " + strconv.FormatInt(user.Money, 10))
-		return nil
-	})
+	showUsers(ctx, client)
+	showItems(ctx, client)
+	showOffers(ctx, client)
 }
