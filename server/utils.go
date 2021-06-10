@@ -18,9 +18,11 @@ import (
 func deleteDBContent(ctx context.Context, client *spanner.Client) {
 	_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, transaction *spanner.ReadWriteTransaction) error {
 
-		mut := spanner.Delete("Users", spanner.AllKeys())
+		deleteUsers := spanner.Delete("Users", spanner.AllKeys())
+		deleteItems := spanner.Delete("Items", spanner.AllKeys())
+		deleteOffers := spanner.Delete("Offers", spanner.AllKeys())
 
-		mutations := []*spanner.Mutation{mut}
+		mutations := []*spanner.Mutation{deleteUsers, deleteItems, deleteOffers}
 
 		err := transaction.BufferWrite(mutations)
 		if err != nil {
@@ -76,7 +78,6 @@ func getAllNames() ([]string, error) {
 }
 
 func randomUsers(n int, maxMoney int64) []shared.User {
-	rand.Seed(20)
 	names, err := getAllNames()
 	if err != nil {
 		log.Panicf("%s", err.Error())
