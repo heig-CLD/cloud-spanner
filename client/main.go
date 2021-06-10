@@ -64,7 +64,7 @@ func (m model) View() string {
 }
 
 func StartClient() {
-	p := tea.NewProgram(initialModel())
+	p := tea.NewProgram(initialModel(), tea.WithAltScreen())
 	if err := p.Start(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
