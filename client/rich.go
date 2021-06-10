@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/charmbracelet/bubbles/progress"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type Rich struct {
@@ -70,6 +71,10 @@ func InitializeRich(name string, percent float64) Rich {
 }
 
 func (r Rich) View() string {
-	str := fmt.Sprintf("%s has %s", r.name, r.progress.View(r.percentOfAllMoney))
+	nameStyle := lipgloss.NewStyle().Width(15)
+
+	str := nameStyle.Render(r.name)
+	str += r.progress.View(r.percentOfAllMoney)
+
 	return str
 }
