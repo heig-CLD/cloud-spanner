@@ -1,7 +1,6 @@
 #!/bin/sh
 
 # Creating the schema
-gcloud spanner databases ddl update test-database --instance=test-instance --ddl="DROP TABLE Offer" # TODO : Remove this
 gcloud spanner databases ddl update test-database --instance=test-instance --ddl="DROP TABLE Offers"
 gcloud spanner databases ddl update test-database --instance=test-instance --ddl="DROP TABLE Items"
 gcloud spanner databases ddl update test-database --instance=test-instance --ddl="DROP TABLE Users"
