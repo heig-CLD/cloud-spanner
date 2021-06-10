@@ -16,6 +16,8 @@ CREATE TABLE Users (
   Id    BYTES(16) NOT NULL,
   Name  STRING(MAX),
   Money INT64,
+
+  CONSTRAINT CS_PositiveMoney CHECK(Money >= 0),
 ) PRIMARY KEY (Id)
 "
 
@@ -37,5 +39,6 @@ CREATE TABLE Offer (
   ItemId  BYTES(16) NOT NULL,
 
   CONSTRAINT FK_ItemOffer FOREIGN KEY (ItemId) REFERENCES Items(Id),
+  CONSTRAINT CS_PositivePrice CHECK(Price >= 0),
 ) PRIMARY KEY (Id)
 "
