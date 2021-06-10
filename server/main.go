@@ -4,7 +4,15 @@ import (
 	spanner "cloud.google.com/go/spanner"
 	"context"
 	"fmt"
+	"github.com/google/uuid"
+	"strconv"
 )
+
+type user struct {
+	Id    []byte `spanner:"Id"`
+	Name  string `spanner:"Name"`
+	Money int64  `spanner:"Money"`
+}
 
 type gcloudConfig struct {
 	project  string
@@ -42,32 +50,38 @@ func StartServer() {
 
 	defer client.Close()
 
-	/*client.ReadWriteTransaction(ctx, func(ctx context.Context, transaction *spanner.ReadWriteTransaction) error {
-		stmt := spanner.Statement{
-			SQL: `INSERT Users (Key, Email) VALUES
-				('alice', 'alice@heig-vd.ch'),
-				('bob', 'bob@heig-vd.ch'),
-				('charlie', 'charlie@heig-vd.ch')`,
-		}
-		updated, err := transaction.Update(ctx, stmt)
+	_, err = client.ReadWriteTransaction(ctx, func(ctx context.Context, transaction *spanner.ReadWriteTransaction) error {
+
+		uuidAlice, _ := uuid.New().MarshalBinary()
+
+		mut, err := spanner.InsertOrUpdateStruct("Users", user{
+			Id:    uuidAlice,
+			Name:  "Alice",
+			Money: 400,
+		})
+
 		if err != nil {
 			return err
 		}
-		fmt.Printf("%d rows inserted", updated)
-		return nil
-	})*/
 
-	row, err := client.Single().ReadRow(ctx, "Users", spanner.Key{"alice"}, []string{"Email"})
+		mutations := []*spanner.Mutation{mut}
+
+		err = transaction.BufferWrite(mutations)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
 	if err != nil {
-		panic(err)
+		println(err.Error())
 	}
 
-	println("3")
-
-	println(row.Size())
-	println(row.ColumnName(0))
-
-	var email string
-	row.ColumnByName("Email", &email)
-	println(email)
+	iterator := client.Single().Query(ctx, spanner.NewStatement("SELECT * FROM Users"))
+	iterator.Do(func(row *spanner.Row) error {
+		var user user
+		row.ToStruct(&user)
+		println("Name: " + user.Name + " Money: " + strconv.FormatInt(user.Money, 10) + " Id: " + string(user.Id))
+		return nil
+	})
 }
