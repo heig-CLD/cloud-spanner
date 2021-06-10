@@ -31,7 +31,7 @@ func usersToRiches(users []shared.User) []Rich {
 
 	var riches []Rich
 	for _, u := range users {
-		riches = append(riches, InitializeRich(u.Name, float64(u.Money) / float64(mostMoney)))
+		riches = append(riches, InitializeRich(u.Name, float64(u.Money)/float64(mostMoney)))
 	}
 
 	return riches
