@@ -4,6 +4,8 @@ import (
 	spanner "cloud.google.com/go/spanner"
 	"context"
 	"fmt"
+	"github.com/google/uuid"
+	"strconv"
 )
 
 type gcloudConfig struct {
@@ -42,32 +44,33 @@ func StartServer() {
 
 	defer client.Close()
 
-	/*client.ReadWriteTransaction(ctx, func(ctx context.Context, transaction *spanner.ReadWriteTransaction) error {
-		stmt := spanner.Statement{
-			SQL: `INSERT Users (Key, Email) VALUES
-				('alice', 'alice@heig-vd.ch'),
-				('bob', 'bob@heig-vd.ch'),
-				('charlie', 'charlie@heig-vd.ch')`,
+	client.ReadWriteTransaction(ctx, func(ctx context.Context, transaction *spanner.ReadWriteTransaction) error {
+
+		uuidAlice, _ := uuid.New().MarshalBinary()
+		columns := []string{"Id", "Name", "Money"}
+		values := []interface{}{uuidAlice, "Alice", 400}
+
+		mutations := []*spanner.Mutation{
+			spanner.InsertOrUpdate("Users", columns, values),
 		}
-		updated, err := transaction.Update(ctx, stmt)
+
+		err := transaction.BufferWrite(mutations)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("%d rows inserted", updated)
 		return nil
-	})*/
+	})
 
-	row, err := client.Single().ReadRow(ctx, "Users", spanner.Key{"alice"}, []string{"Email"})
-	if err != nil {
-		panic(err)
-	}
+	iterator := client.Single().Query(ctx, spanner.NewStatement("SELECT * FROM Users"))
+	iterator.Do(func(row *spanner.Row) error {
+		println("Row size: " + strconv.Itoa(row.Size()))
+		var name string
+		var money int
 
-	println("3")
+		row.ColumnByName("Name", &name)
+		row.ColumnByName("Money", &money)
 
-	println(row.Size())
-	println(row.ColumnName(0))
-
-	var email string
-	row.ColumnByName("Email", &email)
-	println(email)
+		println("Name: " + name + " Money: " + strconv.Itoa(money))
+		return nil
+	})
 }
