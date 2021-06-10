@@ -11,8 +11,6 @@ import (
 )
 
 const (
-	useHighPerformanceRenderer = false
-
 	headerHeight = 3
 	footerHeight = 3
 )
@@ -65,24 +63,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			m.viewport = viewport.Model{Width: msg.Width - margins, Height: msg.Height - margins}
-			m.viewport.YPosition = headerHeight
-			m.viewport.HighPerformanceRendering = useHighPerformanceRenderer
+			m.viewport.YPosition = 100
 			m.viewport.SetContent(content)
 			m.ready = true
 		} else {
 			m.viewport.Width = msg.Width - margins
 			m.viewport.Height = msg.Height - margins
 		}
-
-		if useHighPerformanceRenderer {
-			cmds = append(cmds, viewport.Sync(m.viewport))
-		}
 	}
 
 	m.viewport, cmd = m.viewport.Update(msg)
-	if useHighPerformanceRenderer {
-		cmds = append(cmds, cmd)
-	}
+	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
 }
