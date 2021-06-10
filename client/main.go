@@ -17,9 +17,7 @@ type model struct {
 }
 
 func initialModel() model {
-	rich := InitializeRich("michael", 0.78)
-
-	richPeople := []Rich{rich, rich}
+	richPeople := RandomRichPeople(100)
 	return model{richPeople: richPeople}
 }
 
@@ -56,8 +54,8 @@ func (m model) View() string {
 	}
 
 	str := ""
-	for i, r := range m.richPeople {
-		str += fmt.Sprintf("%d %s", i, r.View())
+	for _, r := range m.richPeople {
+		str += fmt.Sprintf("%s", r.View())
 		str += "\n"
 	}
 
