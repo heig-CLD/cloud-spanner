@@ -4,7 +4,6 @@ import (
 	spanner "cloud.google.com/go/spanner"
 	"context"
 	"fmt"
-	"github.com/google/uuid"
 	"strconv"
 )
 
@@ -52,28 +51,7 @@ func StartServer() {
 
 	DeleteDBContent(ctx, client)
 
-	_, err = client.ReadWriteTransaction(ctx, func(ctx context.Context, transaction *spanner.ReadWriteTransaction) error {
-
-		uuidAlice, _ := uuid.New().MarshalBinary()
-
-		mut, err := spanner.InsertOrUpdateStruct("Users", user{
-			Id:    uuidAlice,
-			Name:  "Alice",
-			Money: 400,
-		})
-
-		if err != nil {
-			return err
-		}
-
-		mutations := []*spanner.Mutation{mut}
-
-		err = transaction.BufferWrite(mutations)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
+	_, err = createUsers(ctx, client, 100)
 
 	if err != nil {
 		println(err.Error())
