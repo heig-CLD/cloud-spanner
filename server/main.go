@@ -19,6 +19,7 @@ func StartServer() {
 	deleteDBContent(ctx, client)
 
 	_, err = createUsers(ctx, client, 20, 10000)
+
 	if err != nil {
 		println(err.Error())
 	}
