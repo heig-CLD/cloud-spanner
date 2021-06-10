@@ -6,22 +6,24 @@ import (
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 type errMsg error
 
 type model struct {
-	spinner  spinner.Model
-	quitting bool
-	err      error
+	quitting   bool
+	err        error
+	richPeople []Rich
 }
 
 func initialModel() model {
-	s := spinner.NewModel()
-	s.Spinner = spinner.Dot
-	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
-	return model{spinner: s}
+	rich := Rich{
+		name:              "michael",
+		percentOfAllMoney: 0.78,
+	}
+
+	richPeople := []Rich{rich, rich}
+	return model{richPeople: richPeople}
 }
 
 func (m model) Init() tea.Cmd {
@@ -46,7 +48,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	default:
 		var cmd tea.Cmd
-		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
 	}
 
@@ -56,10 +57,13 @@ func (m model) View() string {
 	if m.err != nil {
 		return m.err.Error()
 	}
-	str := fmt.Sprintf("\n\n   %s Loading forever...press q to quit\n\n", m.spinner.View())
-	if m.quitting {
-		return str + "\n"
+
+	str := ""
+	for i, r := range m.richPeople {
+		str += fmt.Sprintf("%d %s", i, r.View())
+		str += "\n"
 	}
+
 	return str
 }
 
