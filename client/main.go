@@ -55,7 +55,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.WindowSizeMsg:
-		verticalMargins := 10
+		margins := 10
 
 		if !m.ready {
 			content := ""
@@ -64,14 +64,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				content += "\n"
 			}
 
-			m.viewport = viewport.Model{Width: msg.Width, Height: msg.Height - verticalMargins}
+			m.viewport = viewport.Model{Width: msg.Width - margins, Height: msg.Height - margins}
 			m.viewport.YPosition = headerHeight
 			m.viewport.HighPerformanceRendering = useHighPerformanceRenderer
 			m.viewport.SetContent(content)
 			m.ready = true
 		} else {
-			m.viewport.Width = msg.Width
-			m.viewport.Height = msg.Height - verticalMargins
+			m.viewport.Width = msg.Width - margins
+			m.viewport.Height = msg.Height - margins
 		}
 
 		if useHighPerformanceRenderer {
