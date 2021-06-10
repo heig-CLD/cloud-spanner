@@ -1,4 +1,4 @@
-package main
+package client
 
 import (
 	"fmt"
@@ -63,7 +63,7 @@ func (m model) View() string {
 	return str
 }
 
-func main() {
+func StartClient() {
 	p := tea.NewProgram(initialModel())
 	if err := p.Start(); err != nil {
 		fmt.Println(err)
