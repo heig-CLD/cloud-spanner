@@ -6,7 +6,10 @@ import (
 	"cloud-spanner/shared"
 	"cloud.google.com/go/spanner"
 	"context"
+	"encoding/binary"
+	"encoding/json"
 	"github.com/google/uuid"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
@@ -37,29 +40,57 @@ func deleteDBContent(ctx context.Context, client *spanner.Client) {
 	}
 }
 
-/*
-func createItem(ctx context.Context, client *spanner.Client, userId []byte) (commitTimestamp time.Time, err error) {
+func createItem(cars []BrandCars, userId []byte) (*spanner.Mutation, error) {
 	id, _ := uuid.New().MarshalBinary()
-	mut, err := spanner.InsertOrUpdateStruct("Users", shared.Item{id, "", userId})
+
+	rand.Seed(time.Now().UTC().UnixNano())
+	randIndex := rand.Intn(len(cars))
+	brandCar := cars[randIndex]
+	randIndex = rand.Intn(len(brandCar.Models))
+
+	brand := brandCar.Brand
+	model := brandCar.Models[randIndex]
+
+	return spanner.InsertOrUpdateStruct("Items", shared.Item{Id: id, Description: brand + " " + model, UserId: userId})
 }
 
-func getCars() {
-
+type BrandCars struct {
+	Brand  string   `json:"brand"`
+	Models []string `json:"models"`
 }
-*/
+
+func getCars() ([]BrandCars, error) {
+	file, _ := ioutil.ReadFile("shared/brand-cars.json")
+
+	var data []BrandCars
+	err := json.Unmarshal(file, &data)
+
+	return data, err
+}
 
 func createUsers(ctx context.Context, client *spanner.Client, n int, maxMoney int64) (commitTimestamp time.Time, err error) {
+	cars, err := getCars()
+	if err != nil {
+		panic(err)
+	}
+
 	return client.ReadWriteTransaction(ctx, func(ctx context.Context, transaction *spanner.ReadWriteTransaction) error {
 
 		users := randomUsers(n, maxMoney)
 		var mutations []*spanner.Mutation
-		for _, u := range users {
-			mut, err := spanner.InsertOrUpdateStruct("Users", u)
-
+		for _, user := range users {
+			// Create user
+			mut, err := spanner.InsertOrUpdateStruct("Users", user)
 			if err != nil {
 				return err
 			}
+			mutations = append(mutations, mut)
 
+			// Give the user a car
+			mut, err = createItem(cars, user.Id)
+			if err != nil {
+				return err
+			}
 			mutations = append(mutations, mut)
 		}
 
@@ -145,12 +176,22 @@ func randomUsers(n int, maxMoney int64) []shared.User {
 	return people
 }
 
+func idAsString(bytes []byte) string {
+	id1 := binary.BigEndian.Uint64(bytes[0:8])
+	id2 := binary.BigEndian.Uint64(bytes[8:16])
+
+	s1 := strconv.FormatUint(id1, 10)
+	s2 := strconv.FormatUint(id2, 10)
+
+	return s1 + s2
+}
+
 func showUsers(ctx context.Context, client *spanner.Client) {
 	iterator := client.Single().Query(ctx, spanner.NewStatement("SELECT * FROM Users ORDER BY Money Desc"))
 	iterator.Do(func(row *spanner.Row) error {
 		var user shared.User
 		row.ToStruct(&user)
-		println("User - Name: " + user.Name + " Money: " + strconv.FormatInt(user.Money, 10))
+		println("User - Name: " + user.Name + " Money: " + strconv.FormatInt(user.Money, 10) + " Id: " + idAsString(user.Id))
 		return nil
 	})
 }
@@ -160,7 +201,8 @@ func showItems(ctx context.Context, client *spanner.Client) {
 	iterator.Do(func(row *spanner.Row) error {
 		var item shared.Item
 		row.ToStruct(&item)
-		println("Item - Description: " + item.Description)
+
+		println("Item - Description: " + item.Description + " UserId: " + idAsString(item.UserId) + " Id: " + idAsString(item.Id))
 		return nil
 	})
 }
@@ -170,7 +212,7 @@ func showOffers(ctx context.Context, client *spanner.Client) {
 	iterator.Do(func(row *spanner.Row) error {
 		var offer shared.Offer
 		row.ToStruct(&offer)
-		println("Offer - Price: " + strconv.FormatInt(offer.Price, 10))
+		println("Offer - Price: " + strconv.FormatInt(offer.Price, 10) + " Id: " + idAsString(offer.Id))
 		return nil
 	})
 }
