@@ -1,4 +1,4 @@
-#!bin/sh
+#!/bin/sh
 
 # https://cloud.google.com/spanner/docs/emulator#docker
 gcloud config configurations create emulator

@@ -8,4 +8,5 @@ require (
 	github.com/charmbracelet/bubbletea v0.14.0
 	github.com/charmbracelet/lipgloss v0.2.1
 	github.com/google/uuid v1.2.0 // indirect
+	github.com/mattn/go-runewidth v0.0.12 // indirect
 )
