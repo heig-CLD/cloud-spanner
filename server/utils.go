@@ -78,6 +78,8 @@ func getAllNames() ([]string, error) {
 }
 
 func randomUsers(n int, maxMoney int64) []shared.User {
+	seed := time.Now().UTC().UnixNano()
+	rand.Seed(seed)
 	names, err := getAllNames()
 	if err != nil {
 		log.Panicf("%s", err.Error())
