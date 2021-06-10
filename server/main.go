@@ -22,7 +22,7 @@ func StartServer() {
 
 	DeleteDBContent(ctx, client)
 
-	_, err = createUsers(ctx, client, 100)
+	_, err = createUsers(ctx, client, 20, 10000)
 
 	if err != nil {
 		println(err.Error())
