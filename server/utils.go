@@ -34,10 +34,10 @@ func DeleteDBContent(ctx context.Context, client *spanner.Client) {
 	}
 }
 
-func createUsers(ctx context.Context, client *spanner.Client, n int) (commitTimestamp time.Time, err error) {
+func createUsers(ctx context.Context, client *spanner.Client, n int, maxMoney int64) (commitTimestamp time.Time, err error) {
 	return client.ReadWriteTransaction(ctx, func(ctx context.Context, transaction *spanner.ReadWriteTransaction) error {
 
-		users := RandomUsers(n)
+		users := RandomUsers(n, maxMoney)
 		var mutations []*spanner.Mutation
 		for _, u := range users {
 			mut, err := spanner.InsertOrUpdateStruct("Users", u)
@@ -74,7 +74,7 @@ func getAllNames() ([]string, error) {
 	return allNames, nil
 }
 
-func RandomUsers(n int) []shared.User {
+func RandomUsers(n int, maxMoney int64) []shared.User {
 	rand.Seed(20)
 	names, err := getAllNames()
 	if err != nil {
@@ -85,7 +85,7 @@ func RandomUsers(n int) []shared.User {
 	for i := 0; i < n; i++ {
 		randIndex := rand.Intn(len(names))
 		name := names[randIndex]
-		randMoney := rand.Int63n(10000)
+		randMoney := rand.Int63n(maxMoney)
 
 		id, _ := uuid.New().MarshalBinary()
 
