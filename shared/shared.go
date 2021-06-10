@@ -7,6 +7,17 @@ type User struct {
 	Name  string `spanner:"Name"`
 	Money int64  `spanner:"Money"`
 }
+type Item struct {
+	Id          []byte `spanner:"Id"`
+	Description string `spanner:"Description"`
+	UserId      []byte `spanner:"UserId"`
+}
+
+type Offer struct {
+	Id     []byte `spanner:"Id"`
+	Price  int64  `spanner:"Price"`
+	ItemId []byte `spanner:"ItemId"`
+}
 
 type GcloudConfig struct {
 	Project  string
