@@ -17,10 +17,7 @@ type model struct {
 }
 
 func initialModel() model {
-	rich := Rich{
-		name:              "michael",
-		percentOfAllMoney: 0.78,
-	}
+	rich := InitializeRich("michael", 0.78)
 
 	richPeople := []Rich{rich, rich}
 	return model{richPeople: richPeople}
