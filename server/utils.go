@@ -43,7 +43,6 @@ func deleteDBContent(ctx context.Context, client *spanner.Client) {
 func createItem(cars []BrandCars, userId []byte) (*spanner.Mutation, error) {
 	id, _ := uuid.New().MarshalBinary()
 
-	rand.Seed(time.Now().UTC().UnixNano())
 	randIndex := rand.Intn(len(cars))
 	brandCar := cars[randIndex]
 	randIndex = rand.Intn(len(brandCar.Models))
@@ -74,8 +73,10 @@ func createUsers(ctx context.Context, client *spanner.Client, n int, maxMoney in
 		panic(err)
 	}
 
-	return client.ReadWriteTransaction(ctx, func(ctx context.Context, transaction *spanner.ReadWriteTransaction) error {
+	seed := time.Now().UTC().UnixNano()
+	rand.Seed(seed)
 
+	return client.ReadWriteTransaction(ctx, func(ctx context.Context, transaction *spanner.ReadWriteTransaction) error {
 		users := randomUsers(n, maxMoney)
 		var mutations []*spanner.Mutation
 		for _, user := range users {
@@ -155,8 +156,6 @@ func transfer(from []byte, to []byte, ctx context.Context, client spanner.Client
 }
 
 func randomUsers(n int, maxMoney int64) []shared.User {
-	seed := time.Now().UTC().UnixNano()
-	rand.Seed(seed)
 	names, err := getAllNames()
 	if err != nil {
 		log.Panicf("%s", err.Error())
