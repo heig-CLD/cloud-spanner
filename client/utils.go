@@ -2,8 +2,9 @@ package client
 
 import (
 	"cloud-spanner/shared"
-	"cloud.google.com/go/spanner"
 	"context"
+
+	"cloud.google.com/go/spanner"
 )
 
 func getUsers(ctx context.Context, client *spanner.Client) []shared.User {

@@ -2,11 +2,13 @@ package client
 
 import (
 	"cloud-spanner/shared"
-	"cloud.google.com/go/spanner"
 	"context"
 	"fmt"
 	"os"
 	"strings"
+	"time"
+
+	"cloud.google.com/go/spanner"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -116,4 +118,14 @@ func StartClient() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+}
+
+func retrieveUsers(ctx context.Context, client *spanner.Client) tea.Cmd {
+	retrive := func(t time.Time) tea.Msg {
+		users := getUsers(ctx, client)
+		richPeople := usersToRiches(users)
+		return richPeople
+	}
+
+	return tea.Tick(time.Duration(time.Second), retrive)
 }
