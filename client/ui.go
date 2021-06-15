@@ -12,6 +12,7 @@ type model struct {
 	db db
 
 	richPeople []Rich
+	overview   overview
 }
 
 func initialModel(db db) model {
@@ -20,6 +21,7 @@ func initialModel(db db) model {
 	return model{
 		db:         db,
 		richPeople: richPeople,
+		overview:   overview{total: 1000},
 	}
 }
 
@@ -44,7 +46,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	content := m.richPeopleView()
+	content := m.overview.View()
+	content += "\n"
+	content += m.richPeopleView()
 	return content
 }
 
