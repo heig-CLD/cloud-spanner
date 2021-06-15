@@ -15,15 +15,25 @@ type db struct {
 }
 
 type userMsg []Rich
+type moneyMsg int64
 
 func (db db) retrieveUsers() tea.Cmd {
-	retrive := func(t time.Time) tea.Msg {
+	retrieve := func(t time.Time) tea.Msg {
 		users := db.getUsers()
 		richPeople := usersToRiches(users)
 		return userMsg(richPeople)
 	}
 
-	return tea.Tick(time.Duration(time.Second), retrive)
+	return tea.Tick(300*time.Millisecond, retrieve)
+}
+
+func (db db) retrieveMoney() tea.Cmd {
+	retrieve := func(t time.Time) tea.Msg {
+		money, _ := shared.AggregateMoney(db.ctx, db.client)
+		return moneyMsg(money)
+	}
+
+	return tea.Tick(300*time.Millisecond, retrieve)
 }
 
 func (db db) getUsers() []shared.User {

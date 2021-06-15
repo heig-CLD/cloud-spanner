@@ -7,8 +7,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-type errMsg error
-
 type model struct {
 	db db
 
@@ -22,12 +20,15 @@ func initialModel(db db) model {
 	return model{
 		db:         db,
 		richPeople: richPeople,
-		overview:   overview{total: 1000, poorest: 42, richest: 845},
+		overview:   overview{},
 	}
 }
 
 func (m model) Init() tea.Cmd {
-	return m.db.retrieveUsers()
+	return tea.Batch(
+		m.db.retrieveMoney(),
+		m.db.retrieveUsers(),
+	)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -39,8 +40,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case userMsg:
-		m.richPeople = []Rich(msg)
+		m.richPeople = msg
 		return m, m.db.retrieveUsers()
+
+	case moneyMsg:
+		m.overview.total = int64(msg)
+		return m, m.db.retrieveMoney()
 	}
 
 	return m, nil
