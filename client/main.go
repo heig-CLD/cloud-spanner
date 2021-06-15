@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"cloud.google.com/go/spanner"
 
@@ -12,7 +13,7 @@ import (
 )
 
 func StartClient() {
-	// Setup spanner stuff
+	// Setup spanner
 	project := shared.LocalConfig()
 
 	ctx := context.TODO()
@@ -27,6 +28,9 @@ func StartClient() {
 	db := db{
 		ctx:    ctx,
 		client: client,
+
+		// The refresh rate is the same for all queries
+		refreshRate: 300 * time.Millisecond,
 	}
 
 	// Tea stuff

@@ -3,22 +3,27 @@ package server
 import (
 	"bufio"
 	"cloud-spanner/shared"
-	spanner "cloud.google.com/go/spanner"
+	"cloud.google.com/go/spanner"
 	"context"
 	"fmt"
-	_ "fmt"
 	"os"
 	"time"
 )
 
+const (
+	refresh  = 100 * time.Millisecond
+	n        = 20
+	maxMoney = int64(10000)
+)
+
 func StartServer() {
 
-	n := 20
-	maxMoney := int64(10000)
-
 	project := shared.LocalConfig()
-	ctx := context.TODO()
-	client, err := spanner.NewClient(ctx, project.Uri())
+	background := context.Background()
+
+	launchContext, launchCancel := context.WithCancel(background)
+
+	client, err := spanner.NewClient(background, project.Uri())
 	if err != nil {
 		panic(err)
 	}
@@ -39,19 +44,21 @@ func StartServer() {
 		scanner.Scan()
 		switch scanner.Text() {
 		case "init":
-			initDB(ctx, client, n, maxMoney)
+			initDB(background, client, n, maxMoney)
 		case "launch":
-			launch(ctx, client)
-		case "test":
-			test(ctx, client)
+			launchCancel()
+			launchContext, launchCancel = context.WithCancel(background)
+			launch(launchContext, client)
 		case "start":
-			start(ctx, client, n, maxMoney)
+			launchCancel()
+			launchContext, launchCancel = context.WithCancel(background)
+			start(background, launchContext, client, n, maxMoney)
 		case "show":
-			showDB(ctx, client)
+			showDB(background, client)
 		case "clear":
-			clearDB(ctx, client)
+			clearDB(background, client)
 		case "stop":
-			stop(ctx, client)
+			stop(launchCancel)
 		default:
 			fmt.Println("Unrecognized command... " + helpText)
 		}
@@ -64,22 +71,33 @@ func initDB(ctx context.Context, client *spanner.Client, n int, maxMoney int64) 
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("DB cleared & repopulated")
 }
 
 func launch(ctx context.Context, client *spanner.Client) {
+	fmt.Println("Launching simulation")
 	go func() {
 		for {
-			<-time.After(100 * time.Millisecond)
-			if err := TransferRandomly(ctx, client); err != nil {
-				fmt.Println(err)
+			select {
+			case <-time.After(refresh):
+				if err := TransferRandomly(ctx, client); err != nil {
+					fmt.Println(err)
+				}
+			case <-ctx.Done():
+				return
 			}
-			fmt.Println(".")
 		}
 	}()
 }
 
-func test(ctx context.Context, client *spanner.Client) {
-	println(shared.AggregateMoney(ctx, client))
+func start(initCtx context.Context, launchCtx context.Context, client *spanner.Client, n int, maxMoney int64) {
+	initDB(initCtx, client, n, maxMoney)
+	launch(launchCtx, client)
+}
+
+func stop(cancel func()) {
+	fmt.Println("Stopping simulation")
+	cancel()
 }
 
 func showDB(ctx context.Context, client *spanner.Client) {
@@ -90,16 +108,6 @@ func showDB(ctx context.Context, client *spanner.Client) {
 }
 
 func clearDB(ctx context.Context, client *spanner.Client) {
-	fmt.Println("Clearing DB...")
 	deleteDBContent(ctx, client)
 	fmt.Println("Cleared DB...")
-}
-
-func start(ctx context.Context, client *spanner.Client, n int, maxMoney int64) {
-	initDB(ctx, client, n, maxMoney)
-	launch(ctx, client)
-}
-
-func stop(ctx context.Context, client *spanner.Client) {
-
 }

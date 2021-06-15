@@ -5,16 +5,31 @@ import (
 	"context"
 )
 
+type Aggregation int
+
 const (
-	Sum = "SUM"
-	Max = "MAX"
-	Min = "MIN"
+	Sum Aggregation = iota
+	Max
+	Min
 )
 
-// TODO : Provide an way to choose the aggregate (max, min, sum)
-func AggregateMoney(ctx context.Context, client *spanner.Client) (int64, error) {
+func (agg Aggregation) toSQL() string {
+	switch agg {
+	case Sum:
+		return "SUM"
+	case Max:
+		return "MAX"
+	case Min:
+		return "MIN"
+	default:
+		panic("Unknown aggregation function !!!")
+	}
+}
+
+func AggregateMoney(agg Aggregation, ctx context.Context, client *spanner.Client) (int64, error) {
+	query := "SELECT " + agg.toSQL() + "(Money) FROM Users"
 	transaction := client.ReadOnlyTransaction()
-	iterator := transaction.Query(ctx, spanner.Statement{SQL: "SELECT SUM(Money) FROM Users"})
+	iterator := transaction.Query(ctx, spanner.Statement{SQL: query})
 	res, err := iterator.Next()
 	if err != nil {
 		return 0, err

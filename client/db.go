@@ -12,28 +12,50 @@ import (
 type db struct {
 	ctx    context.Context
 	client *spanner.Client
+
+	refreshRate time.Duration
 }
 
-type userMsg []Rich
-type moneyMsg int64
+type msgUser []Rich
+type msgTotalMoney int64
+type msgRichest int64
+type msgPoorest int64
 
 func (db db) retrieveUsers() tea.Cmd {
 	retrieve := func(t time.Time) tea.Msg {
 		users := db.getUsers()
 		richPeople := usersToRiches(users)
-		return userMsg(richPeople)
+		return msgUser(richPeople)
 	}
 
-	return tea.Tick(300*time.Millisecond, retrieve)
+	return tea.Tick(db.refreshRate, retrieve)
 }
 
-func (db db) retrieveMoney() tea.Cmd {
+func (db db) retrieveTotalMoney() tea.Cmd {
 	retrieve := func(t time.Time) tea.Msg {
-		money, _ := shared.AggregateMoney(db.ctx, db.client)
-		return moneyMsg(money)
+		money, _ := shared.AggregateMoney(shared.Sum, db.ctx, db.client)
+		return msgTotalMoney(money)
 	}
 
-	return tea.Tick(300*time.Millisecond, retrieve)
+	return tea.Tick(db.refreshRate, retrieve)
+}
+
+func (db db) retrieveRichest() tea.Cmd {
+	retrieve := func(t time.Time) tea.Msg {
+		money, _ := shared.AggregateMoney(shared.Max, db.ctx, db.client)
+		return msgRichest(money)
+	}
+
+	return tea.Tick(db.refreshRate, retrieve)
+}
+
+func (db db) retrievePoorest() tea.Cmd {
+	retrieve := func(t time.Time) tea.Msg {
+		money, _ := shared.AggregateMoney(shared.Min, db.ctx, db.client)
+		return msgPoorest(money)
+	}
+
+	return tea.Tick(db.refreshRate, retrieve)
 }
 
 func (db db) getUsers() []shared.User {

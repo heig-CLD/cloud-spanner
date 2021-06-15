@@ -26,7 +26,9 @@ func initialModel(db db) model {
 
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
-		m.db.retrieveMoney(),
+		m.db.retrieveTotalMoney(),
+		m.db.retrieveRichest(),
+		m.db.retrievePoorest(),
 		m.db.retrieveUsers(),
 	)
 }
@@ -39,13 +41,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 
-	case userMsg:
+	case msgUser:
 		m.richPeople = msg
 		return m, m.db.retrieveUsers()
 
-	case moneyMsg:
+	case msgTotalMoney:
 		m.overview.total = int64(msg)
-		return m, m.db.retrieveMoney()
+		return m, m.db.retrieveTotalMoney()
+
+	case msgRichest:
+		m.overview.richest = int64(msg)
+		return m, m.db.retrieveRichest()
+
+	case msgPoorest:
+		m.overview.poorest = int64(msg)
+		return m, m.db.retrievePoorest()
 	}
 
 	return m, nil
@@ -63,7 +73,6 @@ func (m model) View() string {
 
 	row := lipgloss.JoinHorizontal(
 		0,
-		m.richPeopleView(),
 		m.richPeopleView(),
 	)
 
@@ -86,8 +95,7 @@ func (m model) richPeopleView() string {
 
 	content := ""
 	for _, r := range m.richPeople {
-		content += fmt.Sprintf("%s", r.View())
-		content += "\n"
+		content += fmt.Sprintf("%s\n", r.View())
 	}
 
 	return style.Render(content)
