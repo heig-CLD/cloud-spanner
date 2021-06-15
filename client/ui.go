@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type errMsg error
@@ -21,7 +22,7 @@ func initialModel(db db) model {
 	return model{
 		db:         db,
 		richPeople: richPeople,
-		overview:   overview{total: 1000},
+		overview:   overview{total: 1000, poorest: 42, richest: 845},
 	}
 }
 
@@ -46,19 +47,43 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	content := m.overview.View()
-	content += "\n"
-	content += m.richPeopleView()
-	return content
+	mainTitle := lipgloss.NewStyle().
+		Width(1000).
+		Bold(true).
+		Background(lipgloss.Color("#FF7CCB")).
+		Foreground(lipgloss.Color("#000000")).
+		PaddingLeft(2).
+		Align(lipgloss.Left).
+		Render("CLD: Cloud Spanner")
+
+	row := lipgloss.JoinHorizontal(
+		0,
+		m.richPeopleView(),
+		m.richPeopleView(),
+	)
+
+	topRow := lipgloss.JoinHorizontal(
+		0,
+		m.overview.View(),
+	)
+
+	body := lipgloss.JoinVertical(
+		0,
+		mainTitle,
+		topRow,
+		row,
+	)
+	return body
 }
 
 func (m model) richPeopleView() string {
-	content := ""
+	style := lipgloss.NewStyle().Padding(1)
 
+	content := ""
 	for _, r := range m.richPeople {
 		content += fmt.Sprintf("%s", r.View())
 		content += "\n"
 	}
 
-	return content
+	return style.Render(content)
 }
