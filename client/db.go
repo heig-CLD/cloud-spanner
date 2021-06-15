@@ -2,14 +2,34 @@ package client
 
 import (
 	"cloud-spanner/shared"
-	"cloud.google.com/go/spanner"
 	"context"
+	"time"
+
+	"cloud.google.com/go/spanner"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
-func getUsers(ctx context.Context, client *spanner.Client) []shared.User {
+type db struct {
+	ctx    context.Context
+	client *spanner.Client
+}
+
+type userMsg []Rich
+
+func (db db) retrieveUsers() tea.Cmd {
+	retrive := func(t time.Time) tea.Msg {
+		users := db.getUsers()
+		richPeople := usersToRiches(users)
+		return userMsg(richPeople)
+	}
+
+	return tea.Tick(time.Duration(time.Second), retrive)
+}
+
+func (db db) getUsers() []shared.User {
 	var users []shared.User
 
-	iterator := client.Single().Query(ctx, spanner.NewStatement("SELECT * FROM Users ORDER BY Money DESC"))
+	iterator := db.client.Single().Query(db.ctx, spanner.NewStatement("SELECT * FROM Users ORDER BY Money DESC"))
 	iterator.Do(func(row *spanner.Row) error {
 		var user shared.User
 		row.ToStruct(&user)
