@@ -2,18 +2,17 @@ package server
 
 import (
 	"bufio"
-	_ "bufio"
 	"cloud-spanner/shared"
 	"cloud.google.com/go/spanner"
 	"context"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"github.com/google/uuid"
 	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
-	_ "os"
 	"strconv"
 	"time"
 )
@@ -120,39 +119,87 @@ func getAllNames() ([]string, error) {
 	return allNames, nil
 }
 
-/// transfer takes a random amount of money from the person with the from identifier, and transfers it to the person
-/// with the to identifier.
-func transfer(from []byte, to []byte, ctx context.Context, client spanner.Client) error {
+/// TaxesAmount indicates what percentage of a user's net worth may be transferred as part of a single transaction. A
+/// random amount, inferior to this percentage, will be taken.
+const TaxesAmount = 0.4
+
+func Transfer(from []byte, to []byte, ctx context.Context, client spanner.Client) error {
 	_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-
-		fetchUser := func(id []byte) (shared.User, error) {
-			// TODO : Fetch the right columns.
-			row, err := txn.ReadRow(ctx, "Users", spanner.Key{}, []string{})
-			if err != nil {
-				return shared.User{}, err
-			}
-			var user shared.User
-			err = row.ToStruct(&user)
-			return user, err
-		}
-
-		// Fetch both users individually.
-
-		user1, err := fetchUser(from)
-		if err != nil {
-			return err
-		}
-
-		user2, err := fetchUser(to)
-		if err != nil {
-			return err
-		}
-
-		// TODO : Update the database.
-		println(user1.Money + user2.Money)
-		return nil
+		return transfer(from, to, ctx, txn)
 	})
 	return err
+}
+
+func TransferRandomly(ctx context.Context, client *spanner.Client) error {
+	_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		it := txn.Query(ctx, spanner.Statement{SQL: "SELECT * FROM Users TABLESAMPLE RESERVOIR (2 ROWS)"})
+		users := make([]shared.User, 0)
+		err := it.Do(func(r *spanner.Row) error {
+			var user shared.User
+			err := r.ToStruct(&user)
+			if err != nil {
+				return err
+			}
+			users = append(users, user)
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		if len(users) != 2 {
+			return errors.New("not enough users")
+		}
+		return transfer(users[0].Id, users[1].Id, ctx, txn)
+	})
+	return err
+}
+
+/// transfer takes a random amount of money from the person with the from identifier, and transfers it to the person
+/// with the to identifier.
+func transfer(from []byte, to []byte, ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	fetchUser := func(id []byte) (shared.User, error) {
+		row, err := txn.ReadRow(ctx, "Users", spanner.Key{id}, []string{"Id", "Money", "Name"})
+		if err != nil {
+			return shared.User{}, err
+		}
+		var user shared.User
+		err = row.ToStruct(&user)
+		return user, err
+	}
+
+	// Fetch both users individually.
+	user1, err := fetchUser(from)
+	if err != nil {
+		return err
+	}
+
+	user2, err := fetchUser(to)
+	if err != nil {
+		return err
+	}
+
+	mostMoney, leastMoney := user1, user2
+	if user1.Money < user2.Money {
+		mostMoney = user2
+		leastMoney = user1
+	}
+
+	// Calculate how the money should be transferred.
+	transferred := int64(float64(mostMoney.Money) * TaxesAmount * rand.Float64())
+	mostMoney.Money -= transferred
+	leastMoney.Money += transferred
+
+	m1, err := spanner.UpdateStruct("Users", mostMoney)
+	if err != nil {
+		return err
+	}
+	m2, err := spanner.UpdateStruct("Users", leastMoney)
+	if err != nil {
+		return err
+	}
+
+	// Create a mutation with the updates.
+	return txn.BufferWrite([]*spanner.Mutation{m1, m2})
 }
 
 func randomUsers(n int, maxMoney int64) []shared.User {
@@ -186,7 +233,7 @@ func idAsString(bytes []byte) string {
 }
 
 func showUsers(ctx context.Context, client *spanner.Client) {
-	iterator := client.Single().Query(ctx, spanner.NewStatement("SELECT * FROM Users ORDER BY Money Desc"))
+	iterator := client.Single().Query(ctx, spanner.NewStatement("SELECT * FROM Users ORDER BY Money DESC"))
 	iterator.Do(func(row *spanner.Row) error {
 		var user shared.User
 		row.ToStruct(&user)

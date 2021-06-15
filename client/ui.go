@@ -4,14 +4,14 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
-
-type errMsg error
 
 type model struct {
 	db db
 
 	richPeople []Rich
+	overview   overview
 }
 
 func initialModel(db db) model {
@@ -20,11 +20,17 @@ func initialModel(db db) model {
 	return model{
 		db:         db,
 		richPeople: richPeople,
+		overview:   overview{},
 	}
 }
 
 func (m model) Init() tea.Cmd {
-	return m.db.retrieveUsers()
+	return tea.Batch(
+		m.db.retrieveTotalMoney(),
+		m.db.retrieveRichest(),
+		m.db.retrievePoorest(),
+		m.db.retrieveUsers(),
+	)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -35,26 +41,62 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 
-	case userMsg:
-		m.richPeople = []Rich(msg)
+	case msgUser:
+		m.richPeople = msg
 		return m, m.db.retrieveUsers()
+
+	case msgTotalMoney:
+		m.overview.total = int64(msg)
+		return m, m.db.retrieveTotalMoney()
+
+	case msgRichest:
+		m.overview.richest = int64(msg)
+		return m, m.db.retrieveRichest()
+
+	case msgPoorest:
+		m.overview.poorest = int64(msg)
+		return m, m.db.retrievePoorest()
 	}
 
 	return m, nil
 }
 
 func (m model) View() string {
-	content := m.richPeopleView()
-	return content
+	mainTitle := lipgloss.NewStyle().
+		Width(1000).
+		Bold(true).
+		Background(lipgloss.Color("#FF7CCB")).
+		Foreground(lipgloss.Color("#000000")).
+		PaddingLeft(2).
+		Align(lipgloss.Left).
+		Render("CLD: Cloud Spanner")
+
+	row := lipgloss.JoinHorizontal(
+		0,
+		m.richPeopleView(),
+	)
+
+	topRow := lipgloss.JoinHorizontal(
+		0,
+		m.overview.View(),
+	)
+
+	body := lipgloss.JoinVertical(
+		0,
+		mainTitle,
+		topRow,
+		row,
+	)
+	return body
 }
 
 func (m model) richPeopleView() string {
-	content := ""
+	style := lipgloss.NewStyle().Padding(1)
 
+	content := ""
 	for _, r := range m.richPeople {
-		content += fmt.Sprintf("%s", r.View())
-		content += "\n"
+		content += fmt.Sprintf("%s\n", r.View())
 	}
 
-	return content
+	return style.Render(content)
 }
