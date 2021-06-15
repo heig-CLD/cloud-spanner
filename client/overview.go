@@ -20,9 +20,9 @@ func (o overview) View() string {
 	contentStyle := lipgloss.NewStyle().
 		MarginRight(4)
 
-	total := fmt.Sprintf("%d$", o.total)
-	poorest := fmt.Sprintf("%d$", o.poorest)
-	richest := fmt.Sprintf("%d$", o.richest)
+	total := formatMoney(o.total)
+	poorest := formatMoney(o.poorest)
+	richest := formatMoney(o.richest)
 
 	blockStyle := lipgloss.NewStyle().
 		Margin(0, 1).
@@ -39,4 +39,8 @@ func (o overview) View() string {
 	)
 
 	return blockStyle.Render(blockString)
+}
+
+func formatMoney(money int64) string {
+	return fmt.Sprintf("%d $", money)
 }
