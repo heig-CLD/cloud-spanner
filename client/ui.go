@@ -83,10 +83,12 @@ func (m model) View() string {
 		Align(lipgloss.Left).
 		Render("CLD: Cloud Spanner")
 
+	separationStyle := lipgloss.NewStyle().Padding(2)
+
 	row := lipgloss.JoinHorizontal(
 		0,
-		m.richPeopleView(),
-		m.transactions.View(),
+		separationStyle.Render(m.richPeopleView()),
+		separationStyle.Render(m.transactions.View()),
 	)
 
 	topRow := lipgloss.JoinHorizontal(
