@@ -29,8 +29,8 @@ func (transactions Transactions) View() string {
 
 	headerString := lipgloss.JoinHorizontal(
 		0,
-		statHeader("(strong)", 150),
-		statHeader("(stale)", 125),
+		statHeader("(strong)", transactions.strongAmount),
+		statHeader("(stale)", transactions.staleAmount),
 	)
 
 	content := []string{
