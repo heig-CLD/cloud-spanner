@@ -24,65 +24,41 @@ type msgTransactions []transaction
 type msgStrongTransactionTotal int64
 type msgStaleTransactionTotal int64
 
-func (db db) retrieveUsers() tea.Cmd {
-	retrieve := func(t time.Time) tea.Msg {
-		users, _ := db.store.GetUsersRichest(20)
-		richPeople := usersToRiches(users)
-		return msgUser(richPeople)
-	}
-
-	return tea.Tick(db.refreshRate, retrieve)
+func (db db) retrieveUsers() tea.Msg {
+	users, _ := db.store.GetUsersRichest(20)
+	richPeople := usersToRiches(users)
+	return msgUser(richPeople)
 }
 
-func (db db) retrieveTotalUsers() tea.Cmd {
-	retrieve := func(t time.Time) tea.Msg {
-		users, _ := db.store.GetUsersCount()
-		return msgTotalUsers(users)
-	}
-
-	return tea.Tick(db.refreshRate, retrieve)
+func (db db) retrieveTotalUsers() tea.Msg {
+	users, _ := db.store.GetUsersCount()
+	return msgTotalUsers(users)
 }
 
-func (db db) retrieveTotalMoney() tea.Cmd {
-	retrieve := func(t time.Time) tea.Msg {
-		money, _ := db.store.GetMoneyTotal()
-		return msgTotalMoney(money)
-	}
-
-	return tea.Tick(db.refreshRate, retrieve)
+func (db db) retrieveTotalMoney() tea.Msg {
+	money, _ := db.store.GetMoneyTotal()
+	return msgTotalMoney(money)
 }
 
-func (db db) retrieveRichest() tea.Cmd {
-	retrieve := func(t time.Time) tea.Msg {
-		money, _ := db.store.GetMoneyMax()
-		return msgRichest(money)
-	}
-
-	return tea.Tick(db.refreshRate, retrieve)
+func (db db) retrieveRichest() tea.Msg {
+	money, _ := db.store.GetMoneyMax()
+	return msgRichest(money)
 }
 
-func (db db) retrievePoorest() tea.Cmd {
-	retrieve := func(t time.Time) tea.Msg {
-		money, _ := db.store.GetMoneyMin()
-		return msgPoorest(money)
-	}
-
-	return tea.Tick(db.refreshRate, retrieve)
+func (db db) retrievePoorest() tea.Msg {
+	money, _ := db.store.GetMoneyMin()
+	return msgPoorest(money)
 }
 
-func (db db) retrieveTransactions() tea.Cmd {
-	retrieve := func(t time.Time) tea.Msg {
-		transfers, _ := db.store.GetTransfersLatest(20, spanner.StrongRead())
-		transactions := []transaction{}
+func (db db) retrieveTransactions() tea.Msg {
+	transfers, _ := db.store.GetTransfersLatest(20, spanner.StrongRead())
+	transactions := []transaction{}
 
-		for _, t := range transfers {
-			transactions = append(transactions, transfersToTransaction(t))
-		}
-
-		return msgTransactions(transactions)
+	for _, t := range transfers {
+		transactions = append(transactions, transfersToTransaction(t))
 	}
 
-	return tea.Tick(db.refreshRate, retrieve)
+	return msgTransactions(transactions)
 }
 
 func transfersToTransaction(transfer database.Transfer) transaction {
