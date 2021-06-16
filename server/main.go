@@ -125,11 +125,12 @@ func (s *server) launch() {
 	s.cancel()
 	fmt.Println("Launching simulation")
 	ctx := s.context
+	db := database.NewDatabase(ctx, s.client)
 	go func() {
 		for {
 			select {
 			case <-time.After(refresh):
-				_ = TransferRandomly(ctx, s.client)
+				_ = db.TransferRandomly()
 			case <-ctx.Done():
 				return
 			}
@@ -163,5 +164,7 @@ func (s *server) clear() {
 
 func (s *server) show() {
 	fmt.Println("DB Content:")
-	showUsers(database.NewDatabase(s.context, s.client))
+	db := database.NewDatabase(s.context, s.client)
+	showUsers(db)
+	showTransfers(db)
 }

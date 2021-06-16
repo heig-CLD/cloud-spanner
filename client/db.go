@@ -88,8 +88,8 @@ func (db db) retrieveTransactions() tea.Cmd {
 
 func transfersToTransaction(transfer database.Transfer) transaction {
 	return transaction{
-		from:      transfer.From,
-		to:        transfer.To,
+		from:      transfer.FromName,
+		to:        transfer.ToName,
 		amount:    transfer.Amount,
 		timestamp: transfer.Timestamp,
 	}
