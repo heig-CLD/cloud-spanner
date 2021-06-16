@@ -83,7 +83,7 @@ func (t transaction) View() string {
 	style := lipgloss.NewStyle().Width(14)
 	smallStyle := lipgloss.NewStyle().Width(3).MarginRight(5)
 
-	time := t.timestamp.Format(time.RFC822)
+	time := fmt.Sprintf("%02d:%02d:%02d:%d", t.timestamp.Hour(), t.timestamp.Minute(), t.timestamp.Second(), t.timestamp.Nanosecond())
 	amount := fmt.Sprintf("%d $", t.amount)
 
 	content := lipgloss.JoinHorizontal(
