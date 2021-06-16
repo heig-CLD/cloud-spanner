@@ -4,6 +4,9 @@ import (
 	"cloud-spanner/shared"
 	"cloud.google.com/go/spanner"
 	"context"
+	"errors"
+	"github.com/google/uuid"
+	"math/rand"
 	"time"
 )
 
@@ -13,12 +16,13 @@ type database struct {
 }
 
 type Transfer struct {
+	Id        []byte
 	Amount    int64
 	Timestamp time.Time
 	FromId    []byte
-	From      string
+	FromName  string
 	ToId      []byte
-	To        string
+	ToName    string
 }
 
 type Database interface {
@@ -26,7 +30,7 @@ type Database interface {
 	// the Users, Items and Offers tables.
 	Clear() error
 
-	GetUsersCount() (int, error)
+	GetUsersCount() (int64, error)
 
 	// GetUsersRichest returns the richest users. Only `limit` users are
 	// returned.
@@ -38,8 +42,10 @@ type Database interface {
 
 	AddUsers(users []shared.User) error
 
-	GetTransfersCount(bound spanner.TimestampBound) (int, error)
+	GetTransfersCount(bound spanner.TimestampBound) (int64, error)
 	GetTransfersLatest(limit int, bound spanner.TimestampBound) ([]Transfer, error)
+
+	TransferRandomly() error
 }
 
 func NewDatabase(ctx context.Context, client *spanner.Client) Database {
@@ -124,33 +130,125 @@ func (db *database) AddUsers(users []shared.User) error {
 	return err
 }
 
-func (db *database) GetUsersCount() (int, error) {
-	return 42, nil
+func (db *database) GetUsersCount() (int64, error) {
+	query := "SELECT COUNT(*) FROM Users"
+	transaction := db.client.Single()
+	iterator := transaction.Query(db.ctx, spanner.Statement{SQL: query})
+	res, err := iterator.Next()
+	if err != nil {
+		return 0, err
+	}
+	var sum int64
+	err = res.Column(0, &sum)
+	return sum, err
 }
 
-func (db *database) GetTransfersCount(bound spanner.TimestampBound) (int, error) {
-	if bound == spanner.StrongRead() {
-		return 15, nil
+func (db *database) GetTransfersCount(bound spanner.TimestampBound) (int64, error) {
+	query := "SELECT COUNT(*) FROM Transfers"
+	transaction := db.client.Single().WithTimestampBound(bound)
+	iterator := transaction.Query(db.ctx, spanner.Statement{SQL: query})
+	res, err := iterator.Next()
+	if err != nil {
+		return 0, err
 	}
-	return 10, nil
+	var sum int64
+	err = res.Column(0, &sum)
+	return sum, err
 }
 
 func (db *database) GetTransfersLatest(limit int, bound spanner.TimestampBound) ([]Transfer, error) {
-	t1 := Transfer{
-		Amount:    123,
-		Timestamp: time.Now(),
-		From:      "Salut",
-		FromId:    make([]byte, 0),
-		To:        "Le monde",
-		ToId:      make([]byte, 0),
+	statement := spanner.Statement{
+		SQL: "SELECT" +
+			" u1.Id AS FromId," +
+			" u2.Id AS ToId," +
+			" u1.Name AS FromName," +
+			" u2.Name AS ToName," +
+			" t.AtTimestamp AS Timestamp," +
+			" t.Id AS Id," +
+			" t.Amount AS Amount FROM Transfers t" +
+			" JOIN Users u1 ON t.FromUserId = u1.Id" +
+			" JOIN Users u2 ON t.ToUserId = u2.Id" +
+			" ORDER BY AtTimestamp DESC" +
+			" LIMIT @limit",
+		Params: map[string]interface{}{
+			"limit": limit,
+		}}
+	transfers := make([]Transfer, 0)
+	err := db.client.Single().
+		WithTimestampBound(bound).
+		Query(db.ctx, statement).
+		Do(func(row *spanner.Row) error {
+			var transfer Transfer
+			err := row.ToStruct(&transfer)
+			transfers = append(transfers, transfer)
+			return err
+		})
+	return transfers, err
+}
+
+// TaxesAmount indicates what percentage of a user's net worth may be
+// transferred as part of a single transaction. A  random amount, inferior to
+// this percentage, will be taken.
+const TaxesAmount = 0.4
+
+// transfer takes a random amount of money from the person with the from
+// identifier, and transfers it to the person with the to identifier.
+func transfer(from shared.User, to shared.User, txn *spanner.ReadWriteTransaction) error {
+
+	// Figure out the transfer direction.
+	mostMoney, leastMoney := from, to
+	if from.Money < to.Money {
+		mostMoney = to
+		leastMoney = from
 	}
-	t2 := Transfer{
-		Amount:    125,
-		Timestamp: time.Now(),
-		From:      "Marcel",
-		FromId:    make([]byte, 0),
-		To:        "Rémi",
-		ToId:      make([]byte, 0),
+
+	// Calculate how the money should be transferred.
+	transferred := int64(float64(mostMoney.Money) * TaxesAmount * rand.Float64())
+	mostMoney.Money -= transferred
+	leastMoney.Money += transferred
+
+	m1, err := spanner.UpdateStruct("Users", mostMoney)
+	if err != nil {
+		return err
 	}
-	return []Transfer{t1, t2}, nil
+	m2, err := spanner.UpdateStruct("Users", leastMoney)
+	if err != nil {
+		return err
+	}
+	cols := []string{"Id", "Amount", "FromUserId", "ToUserId", "AtTimestamp"}
+	id, _ := uuid.New().MarshalBinary()
+
+	m3 := spanner.Insert("Transfers", cols, []interface{}{
+		id, transferred, mostMoney.Id, leastMoney.Id, spanner.CommitTimestamp,
+	})
+
+	// Create a mutation with the updates.
+	return txn.BufferWrite([]*spanner.Mutation{m1, m2, m3})
+}
+
+func (db *database) TransferRandomly() error {
+	t := func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		it := txn.Query(ctx, spanner.Statement{
+			SQL: "SELECT * FROM Users TABLESAMPLE RESERVOIR (2 ROWS)",
+		})
+		users := make([]shared.User, 0)
+		err := it.Do(func(r *spanner.Row) error {
+			var user shared.User
+			err := r.ToStruct(&user)
+			if err != nil {
+				return err
+			}
+			users = append(users, user)
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		if len(users) != 2 {
+			return errors.New("not enough users")
+		}
+		return transfer(users[0], users[1], txn)
+	}
+	_, err := db.client.ReadWriteTransaction(db.ctx, t)
+	return err
 }
