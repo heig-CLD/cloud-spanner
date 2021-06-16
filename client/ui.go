@@ -28,12 +28,14 @@ func initialModel(db db) model {
 
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
-		m.db.retrieveTotalUsers(),
-		m.db.retrieveTotalMoney(),
-		m.db.retrieveRichest(),
-		m.db.retrievePoorest(),
-		m.db.retrieveUsers(),
-		m.db.retrieveTransactions(),
+		m.db.tick(m.db.retrieveTotalUsers),
+		m.db.tick(m.db.retrieveTotalMoney),
+		m.db.tick(m.db.retrieveRichest),
+		m.db.tick(m.db.retrievePoorest),
+		m.db.tick(m.db.retrieveUsers),
+		m.db.tick(m.db.retrieveTransactions),
+		m.db.tick(m.db.retrieveStaleTransactionsCount),
+		m.db.tick(m.db.retrieveStrongTransactionsCount),
 	)
 }
 
@@ -47,27 +49,36 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case msgUser:
 		m.richPeople = msg
-		return m, m.db.retrieveUsers()
+		return m, m.db.tick(m.db.retrieveUsers)
 
 	case msgTotalUsers:
 		m.overview.totalUsers = int64(msg)
-		return m, m.db.retrieveTotalUsers()
+		return m, m.db.tick(m.db.retrieveTotalUsers)
 
 	case msgTotalMoney:
 		m.overview.totalMoney = int64(msg)
-		return m, m.db.retrieveTotalMoney()
+		return m, m.db.tick(m.db.retrieveTotalMoney)
 
 	case msgRichest:
 		m.overview.richest = int64(msg)
-		return m, m.db.retrieveRichest()
+		return m, m.db.tick(m.db.retrieveRichest)
 
 	case msgPoorest:
 		m.overview.poorest = int64(msg)
-		return m, m.db.retrievePoorest()
+		return m, m.db.tick(m.db.retrievePoorest)
 
 	case msgTransactions:
 		m.transactions.strong = msg
-		return m, m.db.retrieveTransactions()
+		return m, m.db.tick(m.db.retrieveTransactions)
+
+	case msgStrongTransactionTotal:
+		m.transactions.strongAmount = int64(msg)
+		return m, m.db.tick(m.db.retrieveStrongTransactionsCount)
+
+	case msgStaleTransactionTotal:
+		m.transactions.staleAmount = int64(msg)
+		return m, m.db.tick(m.db.retrieveStaleTransactionsCount)
+
 	}
 
 	return m, nil
@@ -83,10 +94,12 @@ func (m model) View() string {
 		Align(lipgloss.Left).
 		Render("CLD: Cloud Spanner")
 
+	separationStyle := lipgloss.NewStyle().Padding(2)
+
 	row := lipgloss.JoinHorizontal(
 		0,
-		m.richPeopleView(),
-		m.transactions.View(),
+		separationStyle.Render(m.richPeopleView()),
+		separationStyle.Render(m.transactions.View()),
 	)
 
 	topRow := lipgloss.JoinHorizontal(
