@@ -36,8 +36,7 @@ func (db db) retrieveUsers() tea.Cmd {
 
 func (db db) retrieveTotalUsers() tea.Cmd {
 	retrieve := func(t time.Time) tea.Msg {
-		// TODO: Change this to the correct method
-		users, _ := db.store.GetMoneyTotal()
+		users, _ := db.store.GetUsersCount()
 		return msgTotalUsers(users)
 	}
 
