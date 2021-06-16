@@ -7,80 +7,15 @@ import (
 	"cloud.google.com/go/spanner"
 	"context"
 	"encoding/binary"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
 	"strconv"
 	"time"
 )
-
-func createItem(cars []BrandCars, userId []byte) (*spanner.Mutation, error) {
-	id, _ := uuid.New().MarshalBinary()
-
-	randIndex := rand.Intn(len(cars))
-	brandCar := cars[randIndex]
-	randIndex = rand.Intn(len(brandCar.Models))
-
-	brand := brandCar.Brand
-	model := brandCar.Models[randIndex]
-
-	return spanner.InsertOrUpdateStruct("Items", shared.Item{Id: id, Description: brand + " " + model, UserId: userId})
-}
-
-type BrandCars struct {
-	Brand  string   `json:"brand"`
-	Models []string `json:"models"`
-}
-
-func getCars() ([]BrandCars, error) {
-	file, _ := ioutil.ReadFile("shared/brand-cars.json")
-
-	var data []BrandCars
-	err := json.Unmarshal(file, &data)
-
-	return data, err
-}
-
-func createUsers(ctx context.Context, client *spanner.Client, n int, maxMoney int64) (commitTimestamp time.Time, err error) {
-	cars, err := getCars()
-	if err != nil {
-		panic(err)
-	}
-
-	seed := time.Now().UTC().UnixNano()
-	rand.Seed(seed)
-
-	return client.ReadWriteTransaction(ctx, func(ctx context.Context, transaction *spanner.ReadWriteTransaction) error {
-		users := randomUsers(n, maxMoney)
-		var mutations []*spanner.Mutation
-		for _, user := range users {
-			// Create user
-			mut, err := spanner.InsertOrUpdateStruct("Users", user)
-			if err != nil {
-				return err
-			}
-			mutations = append(mutations, mut)
-
-			// Give the user a car
-			mut, err = createItem(cars, user.Id)
-			if err != nil {
-				return err
-			}
-			mutations = append(mutations, mut)
-		}
-
-		err = transaction.BufferWrite(mutations)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-}
 
 func getAllNames() ([]string, error) {
 	file, err := os.Open("shared/names.txt")
@@ -198,25 +133,4 @@ func showUsers(store database.Database) {
 	for _, user := range users {
 		println("User - Name: " + user.Name + " Money: " + strconv.FormatInt(user.Money, 10) + " Id: " + idAsString(user.Id))
 	}
-}
-
-func showItems(ctx context.Context, client *spanner.Client) {
-	iterator := client.Single().Query(ctx, spanner.NewStatement("SELECT * FROM Items LIMIT 20"))
-	iterator.Do(func(row *spanner.Row) error {
-		var item shared.Item
-		row.ToStruct(&item)
-
-		println("Item - Description: " + item.Description + " UserId: " + idAsString(item.UserId) + " Id: " + idAsString(item.Id))
-		return nil
-	})
-}
-
-func showOffers(ctx context.Context, client *spanner.Client) {
-	iterator := client.Single().Query(ctx, spanner.NewStatement("SELECT * FROM Offers LIMIT 20"))
-	iterator.Do(func(row *spanner.Row) error {
-		var offer shared.Offer
-		row.ToStruct(&offer)
-		println("Offer - Price: " + strconv.FormatInt(offer.Price, 10) + " Id: " + idAsString(offer.Id))
-		return nil
-	})
 }
