@@ -21,18 +21,33 @@ type Transactions struct {
 }
 
 func (transactions Transactions) View() string {
-	rowStyle := lipgloss.NewStyle().
+	// Header
+	headerStyle := lipgloss.NewStyle().
 		Margin(0, 1).
 		Padding(0, 1).
 		Border(lipgloss.RoundedBorder())
 
-	rowString := lipgloss.JoinHorizontal(
+	headerString := lipgloss.JoinHorizontal(
 		0,
 		statHeader("(strong)", 150),
 		statHeader("(stale)", 125),
 	)
 
-	return rowStyle.Render(rowString)
+	content := []string{
+		headerStyle.Render(headerString),
+	}
+
+	for _, t := range transactions.strong {
+		content = append(content, t.View())
+	}
+
+	bodyStyle := lipgloss.NewStyle()
+	bodyString := lipgloss.JoinHorizontal(
+		0,
+		content...,
+	)
+
+	return bodyStyle.Render(bodyString)
 }
 
 func statHeader(transactionType string, amount int64) string {
@@ -61,4 +76,22 @@ func statHeader(transactionType string, amount int64) string {
 	)
 
 	return blockStyle.Render(blockString)
+}
+
+func (t transaction) View() string {
+	style := lipgloss.NewStyle().Width(14)
+	smallStyle := lipgloss.NewStyle().Width(3)
+
+	time := t.timestamp.Format(time.RFC1123)
+	amount := fmt.Sprintf("%d $", t.amount)
+
+	content := lipgloss.JoinHorizontal(
+		0,
+		style.Render(time),
+		style.Render(t.from),
+		smallStyle.Render("->"),
+		style.Render(t.to),
+		style.Render(amount),
+	)
+	return content
 }
