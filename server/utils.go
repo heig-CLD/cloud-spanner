@@ -3,11 +3,13 @@ package server
 import (
 	"bufio"
 	"cloud-spanner/shared"
+	"cloud-spanner/shared/database"
 	"cloud.google.com/go/spanner"
 	"context"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/google/uuid"
 	"io/ioutil"
 	"log"
@@ -16,28 +18,6 @@ import (
 	"strconv"
 	"time"
 )
-
-func deleteDBContent(ctx context.Context, client *spanner.Client) {
-	_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, transaction *spanner.ReadWriteTransaction) error {
-
-		deleteUsers := spanner.Delete("Users", spanner.AllKeys())
-		deleteItems := spanner.Delete("Items", spanner.AllKeys())
-		deleteOffers := spanner.Delete("Offers", spanner.AllKeys())
-
-		mutations := []*spanner.Mutation{deleteUsers, deleteItems, deleteOffers}
-
-		err := transaction.BufferWrite(mutations)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		panic(err)
-	}
-}
 
 func createItem(cars []BrandCars, userId []byte) (*spanner.Mutation, error) {
 	id, _ := uuid.New().MarshalBinary()
@@ -123,13 +103,6 @@ func getAllNames() ([]string, error) {
 /// random amount, inferior to this percentage, will be taken.
 const TaxesAmount = 0.4
 
-func Transfer(from []byte, to []byte, ctx context.Context, client spanner.Client) error {
-	_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		return transfer(from, to, ctx, txn)
-	})
-	return err
-}
-
 func TransferRandomly(ctx context.Context, client *spanner.Client) error {
 	_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		it := txn.Query(ctx, spanner.Statement{SQL: "SELECT * FROM Users TABLESAMPLE RESERVOIR (2 ROWS)"})
@@ -149,39 +122,20 @@ func TransferRandomly(ctx context.Context, client *spanner.Client) error {
 		if len(users) != 2 {
 			return errors.New("not enough users")
 		}
-		return transfer(users[0].Id, users[1].Id, ctx, txn)
+		return transfer(users[0], users[1], txn)
 	})
 	return err
 }
 
 /// transfer takes a random amount of money from the person with the from identifier, and transfers it to the person
 /// with the to identifier.
-func transfer(from []byte, to []byte, ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-	fetchUser := func(id []byte) (shared.User, error) {
-		row, err := txn.ReadRow(ctx, "Users", spanner.Key{id}, []string{"Id", "Money", "Name"})
-		if err != nil {
-			return shared.User{}, err
-		}
-		var user shared.User
-		err = row.ToStruct(&user)
-		return user, err
-	}
+func transfer(from shared.User, to shared.User, txn *spanner.ReadWriteTransaction) error {
 
-	// Fetch both users individually.
-	user1, err := fetchUser(from)
-	if err != nil {
-		return err
-	}
-
-	user2, err := fetchUser(to)
-	if err != nil {
-		return err
-	}
-
-	mostMoney, leastMoney := user1, user2
-	if user1.Money < user2.Money {
-		mostMoney = user2
-		leastMoney = user1
+	// Figure out the transfer direction.
+	mostMoney, leastMoney := from, to
+	if from.Money < to.Money {
+		mostMoney = to
+		leastMoney = from
 	}
 
 	// Calculate how the money should be transferred.
@@ -203,6 +157,9 @@ func transfer(from []byte, to []byte, ctx context.Context, txn *spanner.ReadWrit
 }
 
 func randomUsers(n int, maxMoney int64) []shared.User {
+	seed := time.Now().UTC().UnixNano()
+	rand.Seed(seed)
+
 	names, err := getAllNames()
 	if err != nil {
 		log.Panicf("%s", err.Error())
@@ -232,18 +189,19 @@ func idAsString(bytes []byte) string {
 	return s1 + s2
 }
 
-func showUsers(ctx context.Context, client *spanner.Client) {
-	iterator := client.Single().Query(ctx, spanner.NewStatement("SELECT * FROM Users ORDER BY Money DESC"))
-	iterator.Do(func(row *spanner.Row) error {
-		var user shared.User
-		row.ToStruct(&user)
+func showUsers(store database.Database) {
+	users, err := store.GetUsersRichest(20)
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "%s when reading users.\n", err.Error())
+		return
+	}
+	for _, user := range users {
 		println("User - Name: " + user.Name + " Money: " + strconv.FormatInt(user.Money, 10) + " Id: " + idAsString(user.Id))
-		return nil
-	})
+	}
 }
 
 func showItems(ctx context.Context, client *spanner.Client) {
-	iterator := client.Single().Query(ctx, spanner.NewStatement("SELECT * FROM Items"))
+	iterator := client.Single().Query(ctx, spanner.NewStatement("SELECT * FROM Items LIMIT 20"))
 	iterator.Do(func(row *spanner.Row) error {
 		var item shared.Item
 		row.ToStruct(&item)
@@ -254,7 +212,7 @@ func showItems(ctx context.Context, client *spanner.Client) {
 }
 
 func showOffers(ctx context.Context, client *spanner.Client) {
-	iterator := client.Single().Query(ctx, spanner.NewStatement("SELECT * FROM Offers"))
+	iterator := client.Single().Query(ctx, spanner.NewStatement("SELECT * FROM Offers LIMIT 20"))
 	iterator.Do(func(row *spanner.Row) error {
 		var offer shared.Offer
 		row.ToStruct(&offer)
