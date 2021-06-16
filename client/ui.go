@@ -10,17 +10,19 @@ import (
 type model struct {
 	db db
 
-	richPeople []Rich
-	overview   overview
+	richPeople   []Rich
+	overview     overview
+	transactions Transactions
 }
 
 func initialModel(db db) model {
 	var richPeople []Rich
 
 	return model{
-		db:         db,
-		richPeople: richPeople,
-		overview:   overview{},
+		db:           db,
+		richPeople:   richPeople,
+		overview:     overview{},
+		transactions: Transactions{},
 	}
 }
 
@@ -79,6 +81,7 @@ func (m model) View() string {
 	row := lipgloss.JoinHorizontal(
 		0,
 		m.richPeopleView(),
+		m.transactions.View(),
 	)
 
 	topRow := lipgloss.JoinHorizontal(
