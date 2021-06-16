@@ -28,12 +28,12 @@ func initialModel(db db) model {
 
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
-		m.db.retrieveTotalUsers(),
-		m.db.retrieveTotalMoney(),
-		m.db.retrieveRichest(),
-		m.db.retrievePoorest(),
-		m.db.retrieveUsers(),
-		m.db.retrieveTransactions(),
+		m.db.tick(m.db.retrieveTotalUsers),
+		m.db.tick(m.db.retrieveTotalMoney),
+		m.db.tick(m.db.retrieveRichest),
+		m.db.tick(m.db.retrievePoorest),
+		m.db.tick(m.db.retrieveUsers),
+		m.db.tick(m.db.retrieveTransactions),
 	)
 }
 
@@ -47,27 +47,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case msgUser:
 		m.richPeople = msg
-		return m, m.db.retrieveUsers()
 
 	case msgTotalUsers:
 		m.overview.totalUsers = int64(msg)
-		return m, m.db.retrieveTotalUsers()
 
 	case msgTotalMoney:
 		m.overview.totalMoney = int64(msg)
-		return m, m.db.retrieveTotalMoney()
 
 	case msgRichest:
 		m.overview.richest = int64(msg)
-		return m, m.db.retrieveRichest()
 
 	case msgPoorest:
 		m.overview.poorest = int64(msg)
-		return m, m.db.retrievePoorest()
 
 	case msgTransactions:
 		m.transactions.strong = msg
-		return m, m.db.retrieveTransactions()
 	}
 
 	return m, nil

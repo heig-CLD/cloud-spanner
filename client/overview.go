@@ -30,6 +30,7 @@ func (o overview) View() string {
 		Margin(0, 1).
 		Padding(0, 1).
 		Border(lipgloss.RoundedBorder())
+
 	blockString := lipgloss.JoinHorizontal(
 		0,
 		titleStyle.Render("Users"),
