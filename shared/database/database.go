@@ -37,9 +37,8 @@ func NewDatabase(ctx context.Context, client *spanner.Client) Database {
 func (db *database) Clear() error {
 	t := func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.Delete("Transfers", spanner.AllKeys()),
 			spanner.Delete("Users", spanner.AllKeys()),
-			spanner.Delete("Items", spanner.AllKeys()),
-			spanner.Delete("Offers", spanner.AllKeys()),
 		})
 	}
 	_, err := db.client.ReadWriteTransaction(db.ctx, t)
@@ -98,12 +97,6 @@ func (db *database) AddUsers(users []shared.User) error {
 			if err != nil {
 				return err
 			}
-
-			// Give the user a car
-			// mut, err = createItem(cars, user.Id)
-			// if err != nil {
-			//	return err
-			//}
 
 			err = txn.BufferWrite([]*spanner.Mutation{mut})
 			if err != nil {

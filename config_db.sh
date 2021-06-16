@@ -9,59 +9,49 @@ if [ "$1" == "--help" ]; then
 fi
 
 # Creating the schema
-gcloud spanner databases ddl update test-database --instance=test-instance --ddl="DROP TABLE Offers"
-gcloud spanner databases ddl update test-database --instance=test-instance --ddl="DROP TABLE Items"
+
+# Please run this if you still use the old schema.
+gcloud spanner databases ddl update test-database --instance=test-instance --ddl="DROP TABLE Transfers"
 gcloud spanner databases ddl update test-database --instance=test-instance --ddl="DROP TABLE Users"
 
 if [ "$1" == "--no-checks" ]; then # Run the commands without checks.
   gcloud spanner databases ddl update test-database --instance=test-instance --ddl="
   CREATE TABLE Users (
-    Id    BYTES(16) NOT NULL,
-    Name  STRING(MAX),
-    Money INT64,
+    Id    BYTES(16)   NOT NULL,
+    Name  STRING(MAX) NOT NULL,
+    Money INT64       NOT NUL,
   ) PRIMARY KEY (Id)
   "
   gcloud spanner databases ddl update test-database --instance=test-instance --ddl="
-  CREATE TABLE Items (
+  CREATE TABLE Transfers (
     Id          BYTES(16) NOT NULL,
-    Description STRING(MAX),
-    UserId BYTES(16) NOT NULL,
-    CONSTRAINT FK_UserItem FOREIGN KEY (UserId) REFERENCES Users(Id),
-  ) PRIMARY KEY (Id)
-  "
-  gcloud spanner databases ddl update test-database --instance=test-instance --ddl="
-  CREATE TABLE Offers (
-    Id      BYTES(16) NOT NULL,
-    Price   INT64,
-    ItemId  BYTES(16) NOT NULL,
-    CONSTRAINT FK_ItemOffer FOREIGN KEY (ItemId) REFERENCES Items(Id),
+    Amount      INT64     NOT NULL,
+    FromUserId  BYTES(16) NOT NULL,
+    ToUserId    BYTES(16) NOT NULL,
+    CONSTRAINT FK_FromUser FOREIGN KEY (FromUserId) REFERENCES Users(Id),
+    CONSTRAINT FK_ToUser   FOREIGN KEY (ToUserId)   REFERENCES Users(Id),
   ) PRIMARY KEY (Id)
   "
 # Run the commands with the checks (not on emulator).
 else
   gcloud spanner databases ddl update test-database --instance=test-instance --ddl="
   CREATE TABLE Users (
-    Id    BYTES(16) NOT NULL,
-    Name  STRING(MAX),
-    Money INT64,
+    Id    BYTES(16)   NOT NULL,
+    Name  STRING(MAX) NOT NULL,
+    Money INT64       NOT NULL,
     CONSTRAINT CS_PositiveMoney CHECK(Money >= 0),
   ) PRIMARY KEY (Id)
   "
   gcloud spanner databases ddl update test-database --instance=test-instance --ddl="
-  CREATE TABLE Items (
+  CREATE TABLE Transfers (
     Id          BYTES(16) NOT NULL,
-    Description STRING(MAX),
-    UserId BYTES(16) NOT NULL,
-    CONSTRAINT FK_UserItem FOREIGN KEY (UserId) REFERENCES Users(Id),
-  ) PRIMARY KEY (Id)
-  "
-  gcloud spanner databases ddl update test-database --instance=test-instance --ddl="
-  CREATE TABLE Offers (
-    Id      BYTES(16) NOT NULL,
-    Price   INT64,
-    ItemId  BYTES(16) NOT NULL,
-    CONSTRAINT FK_ItemOffer FOREIGN KEY (ItemId) REFERENCES Items(Id),
-    CONSTRAINT CS_PositivePrice CHECK(Price >= 0),
+    Amount      INT64     NOT NULL,
+    FromUserId  BYTES(16) NOT NULL,
+    ToUserId    BYTES(16) NOT NULL,
+    AtTimestamp TIMESTAMP NOT NULL,
+    CONSTRAINT FK_FromUser       FOREIGN KEY (FromUserId) REFERENCES Users(Id),
+    CONSTRAINT FK_ToUser         FOREIGN KEY (ToUserId)   REFERENCES Users(Id),
+    CONSTRAINT CS_PositiveAmount CHECK(Amount >= 0),
   ) PRIMARY KEY (Id)
   "
 fi
