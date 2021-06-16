@@ -88,9 +88,12 @@ func (db *database) GetUsersRichest(limit int) ([]shared.User, error) {
 func (db *database) getMoneyAggregate(operator string) (int64, error) {
 	query := "SELECT " + operator + "(Money) FROM Users"
 	transaction := db.client.Single()
+	defer transaction.Close()
 	iterator := transaction.Query(db.ctx, spanner.Statement{SQL: query})
+	defer iterator.Stop()
 	res, err := iterator.Next()
 	if err != nil {
+
 		return 0, err
 	}
 	var sum int64
@@ -133,7 +136,9 @@ func (db *database) AddUsers(users []shared.User) error {
 func (db *database) GetUsersCount() (int64, error) {
 	query := "SELECT COUNT(*) FROM Users"
 	transaction := db.client.Single()
+	defer transaction.Close()
 	iterator := transaction.Query(db.ctx, spanner.Statement{SQL: query})
+	defer iterator.Stop()
 	res, err := iterator.Next()
 	if err != nil {
 		return 0, err
@@ -146,7 +151,9 @@ func (db *database) GetUsersCount() (int64, error) {
 func (db *database) GetTransfersCount(bound spanner.TimestampBound) (int64, error) {
 	query := "SELECT COUNT(*) FROM Transfers"
 	transaction := db.client.Single().WithTimestampBound(bound)
+	defer transaction.Close()
 	iterator := transaction.Query(db.ctx, spanner.Statement{SQL: query})
+	defer iterator.Stop()
 	res, err := iterator.Next()
 	if err != nil {
 		return 0, err
