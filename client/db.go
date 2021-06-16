@@ -32,55 +32,33 @@ func (db db) tick(f func() tea.Msg) tea.Cmd {
 }
 
 func (db db) retrieveUsers() tea.Msg {
-	users, err := db.store.GetUsersRichest(20)
-	if err != nil {
-		return db.tick(db.retrieveUsers)
-	}
-
+	users, _ := db.store.GetUsersRichest(20)
 	richPeople := usersToRiches(users)
 	return msgUser(richPeople)
 }
 
 func (db db) retrieveTotalUsers() tea.Msg {
-	users, err := db.store.GetUsersCount()
-	if err != nil {
-		return db.tick(db.retrieveTotalUsers)
-	}
-
+	users, _ := db.store.GetUsersCount()
 	return msgTotalUsers(users)
 }
 
 func (db db) retrieveTotalMoney() tea.Msg {
-	money, err := db.store.GetMoneyTotal()
-	if err != nil {
-		return db.tick(db.retrieveTotalMoney)
-	}
-
+	money, _ := db.store.GetMoneyTotal()
 	return msgTotalMoney(money)
 }
 
 func (db db) retrieveRichest() tea.Msg {
-	money, err := db.store.GetMoneyMax()
-	if err != nil {
-		return db.tick(db.retrieveRichest)
-	}
+	money, _ := db.store.GetMoneyMax()
 	return msgRichest(money)
 }
 
 func (db db) retrievePoorest() tea.Msg {
-	money, err := db.store.GetMoneyMin()
-	if err != nil {
-		return db.tick(db.retrievePoorest)
-	}
-
+	money, _ := db.store.GetMoneyMin()
 	return msgPoorest(money)
 }
 
 func (db db) retrieveTransactions() tea.Msg {
-	transfers, err := db.store.GetTransfersLatest(20, spanner.StrongRead())
-	if err != nil {
-		return db.tick(db.retrieveTransactions)
-	}
+	transfers, _ := db.store.GetTransfersLatest(17, spanner.StrongRead())
 
 	transactions := []transaction{}
 
