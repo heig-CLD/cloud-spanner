@@ -61,7 +61,7 @@ func statHeader(transactionType string, amount int64) string {
 
 	titleString := lipgloss.JoinVertical(
 		0,
-		boldStyle.Render("# transactions"),
+		boldStyle.Render("# transfers"),
 		commentStyle.Render(transactionType),
 	)
 
