@@ -125,11 +125,12 @@ func (s *server) launch() {
 	s.cancel()
 	fmt.Println("Launching simulation")
 	ctx := s.context
+	db := database.NewDatabase(ctx, s.client)
 	go func() {
 		for {
 			select {
 			case <-time.After(refresh):
-				_ = TransferRandomly(ctx, s.client)
+				_ = db.TransferRandomly()
 			case <-ctx.Done():
 				return
 			}

@@ -4,6 +4,8 @@ import (
 	"cloud-spanner/shared"
 	"cloud.google.com/go/spanner"
 	"context"
+	"errors"
+	"math/rand"
 	"time"
 )
 
@@ -40,6 +42,8 @@ type Database interface {
 
 	GetTransfersCount(bound spanner.TimestampBound) (int, error)
 	GetTransfersLatest(limit int, bound spanner.TimestampBound) ([]Transfer, error)
+
+	TransferRandomly() error
 }
 
 func NewDatabase(ctx context.Context, client *spanner.Client) Database {
@@ -153,4 +157,65 @@ func (db *database) GetTransfersLatest(limit int, bound spanner.TimestampBound) 
 		ToId:      make([]byte, 0),
 	}
 	return []Transfer{t1, t2}, nil
+}
+
+// TaxesAmount indicates what percentage of a user's net worth may be
+// transferred as part of a single transaction. A  random amount, inferior to
+// this percentage, will be taken.
+const TaxesAmount = 0.4
+
+// transfer takes a random amount of money from the person with the from
+// identifier, and transfers it to the person with the to identifier.
+func transfer(from shared.User, to shared.User, txn *spanner.ReadWriteTransaction) error {
+
+	// Figure out the transfer direction.
+	mostMoney, leastMoney := from, to
+	if from.Money < to.Money {
+		mostMoney = to
+		leastMoney = from
+	}
+
+	// Calculate how the money should be transferred.
+	transferred := int64(float64(mostMoney.Money) * TaxesAmount * rand.Float64())
+	mostMoney.Money -= transferred
+	leastMoney.Money += transferred
+
+	m1, err := spanner.UpdateStruct("Users", mostMoney)
+	if err != nil {
+		return err
+	}
+	m2, err := spanner.UpdateStruct("Users", leastMoney)
+	if err != nil {
+		return err
+	}
+
+	// Create a mutation with the updates.
+	return txn.BufferWrite([]*spanner.Mutation{m1, m2})
+}
+
+func (db *database) TransferRandomly() error {
+	t := func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		it := txn.Query(ctx, spanner.Statement{
+			SQL: "SELECT * FROM Users TABLESAMPLE RESERVOIR (2 ROWS)",
+		})
+		users := make([]shared.User, 0)
+		err := it.Do(func(r *spanner.Row) error {
+			var user shared.User
+			err := r.ToStruct(&user)
+			if err != nil {
+				return err
+			}
+			users = append(users, user)
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		if len(users) != 2 {
+			return errors.New("not enough users")
+		}
+		return transfer(users[0], users[1], txn)
+	}
+	_, err := db.client.ReadWriteTransaction(db.ctx, t)
+	return err
 }
