@@ -79,11 +79,11 @@ func statHeader(transactionType string, amount int64) string {
 }
 
 func (t transaction) View() string {
-	timeStyle := lipgloss.NewStyle().Width(24)
+	timeStyle := lipgloss.NewStyle().Width(10)
 	style := lipgloss.NewStyle().Width(14)
 	smallStyle := lipgloss.NewStyle().Width(3).MarginRight(5)
 
-	time := fmt.Sprintf("%02d:%02d:%02d:%d", t.timestamp.Hour(), t.timestamp.Minute(), t.timestamp.Second(), t.timestamp.Nanosecond())
+	time := fmt.Sprintf("%02d:%02d:%02d", t.timestamp.Hour(), t.timestamp.Minute(), t.timestamp.Second())
 	amount := fmt.Sprintf("%d $", t.amount)
 
 	content := lipgloss.JoinHorizontal(
