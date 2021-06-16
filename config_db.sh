@@ -28,6 +28,7 @@ if [ "$1" == "--no-checks" ]; then # Run the commands without checks.
     Amount      INT64     NOT NULL,
     FromUserId  BYTES(16) NOT NULL,
     ToUserId    BYTES(16) NOT NULL,
+    AtTimestamp TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
     CONSTRAINT FK_FromUser FOREIGN KEY (FromUserId) REFERENCES Users(Id),
     CONSTRAINT FK_ToUser   FOREIGN KEY (ToUserId)   REFERENCES Users(Id),
   ) PRIMARY KEY (Id)
@@ -48,7 +49,7 @@ else
     Amount      INT64     NOT NULL,
     FromUserId  BYTES(16) NOT NULL,
     ToUserId    BYTES(16) NOT NULL,
-    AtTimestamp TIMESTAMP NOT NULL,
+    AtTimestamp TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
     CONSTRAINT FK_FromUser       FOREIGN KEY (FromUserId) REFERENCES Users(Id),
     CONSTRAINT FK_ToUser         FOREIGN KEY (ToUserId)   REFERENCES Users(Id),
     CONSTRAINT CS_PositiveAmount CHECK(Amount >= 0),

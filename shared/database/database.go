@@ -5,6 +5,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"context"
 	"errors"
+	"github.com/google/uuid"
 	"math/rand"
 	"time"
 )
@@ -28,7 +29,7 @@ type Database interface {
 	// the Users, Items and Offers tables.
 	Clear() error
 
-	GetUsersCount() (int, error)
+	GetUsersCount() (int64, error)
 
 	// GetUsersRichest returns the richest users. Only `limit` users are
 	// returned.
@@ -40,7 +41,7 @@ type Database interface {
 
 	AddUsers(users []shared.User) error
 
-	GetTransfersCount(bound spanner.TimestampBound) (int, error)
+	GetTransfersCount(bound spanner.TimestampBound) (int64, error)
 	GetTransfersLatest(limit int, bound spanner.TimestampBound) ([]Transfer, error)
 
 	TransferRandomly() error
@@ -128,15 +129,30 @@ func (db *database) AddUsers(users []shared.User) error {
 	return err
 }
 
-func (db *database) GetUsersCount() (int, error) {
-	return 42, nil
+func (db *database) GetUsersCount() (int64, error) {
+	query := "SELECT COUNT(*) FROM Users"
+	transaction := db.client.Single()
+	iterator := transaction.Query(db.ctx, spanner.Statement{SQL: query})
+	res, err := iterator.Next()
+	if err != nil {
+		return 0, err
+	}
+	var sum int64
+	err = res.Column(0, &sum)
+	return sum, err
 }
 
-func (db *database) GetTransfersCount(bound spanner.TimestampBound) (int, error) {
-	if bound == spanner.StrongRead() {
-		return 15, nil
+func (db *database) GetTransfersCount(bound spanner.TimestampBound) (int64, error) {
+	query := "SELECT COUNT(*) FROM Transfers"
+	transaction := db.client.Single().WithTimestampBound(bound)
+	iterator := transaction.Query(db.ctx, spanner.Statement{SQL: query})
+	res, err := iterator.Next()
+	if err != nil {
+		return 0, err
 	}
-	return 10, nil
+	var sum int64
+	err = res.Column(0, &sum)
+	return sum, err
 }
 
 func (db *database) GetTransfersLatest(limit int, bound spanner.TimestampBound) ([]Transfer, error) {
@@ -188,9 +204,15 @@ func transfer(from shared.User, to shared.User, txn *spanner.ReadWriteTransactio
 	if err != nil {
 		return err
 	}
+	cols := []string{"Id", "Amount", "FromUserId", "ToUserId", "AtTimestamp"}
+	id, _ := uuid.New().MarshalBinary()
+
+	m3 := spanner.Insert("Transfers", cols, []interface{}{
+		id, transferred, mostMoney.Id, leastMoney.Id, spanner.CommitTimestamp,
+	})
 
 	// Create a mutation with the updates.
-	return txn.BufferWrite([]*spanner.Mutation{m1, m2})
+	return txn.BufferWrite([]*spanner.Mutation{m1, m2, m3})
 }
 
 func (db *database) TransferRandomly() error {
