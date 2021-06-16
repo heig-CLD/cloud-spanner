@@ -10,26 +10,30 @@ import (
 type model struct {
 	db db
 
-	richPeople []Rich
-	overview   overview
+	richPeople   []Rich
+	overview     overview
+	transactions Transactions
 }
 
 func initialModel(db db) model {
 	var richPeople []Rich
 
 	return model{
-		db:         db,
-		richPeople: richPeople,
-		overview:   overview{},
+		db:           db,
+		richPeople:   richPeople,
+		overview:     overview{},
+		transactions: Transactions{},
 	}
 }
 
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
+		m.db.retrieveTotalUsers(),
 		m.db.retrieveTotalMoney(),
 		m.db.retrieveRichest(),
 		m.db.retrievePoorest(),
 		m.db.retrieveUsers(),
+		m.db.retrieveTransactions(),
 	)
 }
 
@@ -45,8 +49,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.richPeople = msg
 		return m, m.db.retrieveUsers()
 
+	case msgTotalUsers:
+		m.overview.totalUsers = int64(msg)
+		return m, m.db.retrieveTotalUsers()
+
 	case msgTotalMoney:
-		m.overview.total = int64(msg)
+		m.overview.totalMoney = int64(msg)
 		return m, m.db.retrieveTotalMoney()
 
 	case msgRichest:
@@ -56,6 +64,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case msgPoorest:
 		m.overview.poorest = int64(msg)
 		return m, m.db.retrievePoorest()
+
+	case msgTransactions:
+		m.transactions.strong = msg
+		return m, m.db.retrieveTransactions()
 	}
 
 	return m, nil
@@ -74,6 +86,7 @@ func (m model) View() string {
 	row := lipgloss.JoinHorizontal(
 		0,
 		m.richPeopleView(),
+		m.transactions.View(),
 	)
 
 	topRow := lipgloss.JoinHorizontal(
