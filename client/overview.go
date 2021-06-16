@@ -7,9 +7,10 @@ import (
 )
 
 type overview struct {
-	total   int64
-	poorest int64
-	richest int64
+	totalUsers int64
+	totalMoney int64
+	poorest    int64
+	richest    int64
 }
 
 func (o overview) View() string {
@@ -18,9 +19,10 @@ func (o overview) View() string {
 		MarginRight(2)
 
 	contentStyle := lipgloss.NewStyle().
-		MarginRight(4)
+		MarginRight(6)
 
-	total := formatMoney(o.total)
+	totalUsers := fmt.Sprintf("%d", o.totalUsers)
+	totalMoney := formatMoney(o.totalMoney)
 	poorest := formatMoney(o.poorest)
 	richest := formatMoney(o.richest)
 
@@ -30,8 +32,10 @@ func (o overview) View() string {
 		Border(lipgloss.RoundedBorder())
 	blockString := lipgloss.JoinHorizontal(
 		0,
+		titleStyle.Render("Users"),
+		contentStyle.Render(totalUsers),
 		titleStyle.Render("Total Money"),
-		contentStyle.Render(total),
+		contentStyle.Render(totalMoney),
 		titleStyle.Render("Richest"),
 		contentStyle.Render(richest),
 		titleStyle.Render("Poorest"),

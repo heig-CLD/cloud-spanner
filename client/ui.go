@@ -26,6 +26,7 @@ func initialModel(db db) model {
 
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
+		m.db.retrieveTotalUsers(),
 		m.db.retrieveTotalMoney(),
 		m.db.retrieveRichest(),
 		m.db.retrievePoorest(),
@@ -45,8 +46,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.richPeople = msg
 		return m, m.db.retrieveUsers()
 
+	case msgTotalUsers:
+		m.overview.totalUsers = int64(msg)
+		return m, m.db.retrieveTotalUsers()
+
 	case msgTotalMoney:
-		m.overview.total = int64(msg)
+		m.overview.totalMoney = int64(msg)
 		return m, m.db.retrieveTotalMoney()
 
 	case msgRichest:

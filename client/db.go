@@ -16,6 +16,7 @@ type db struct {
 
 type msgUser []Rich
 type msgTotalMoney int64
+type msgTotalUsers int64
 type msgRichest int64
 type msgPoorest int64
 
@@ -24,6 +25,16 @@ func (db db) retrieveUsers() tea.Cmd {
 		users, _ := db.store.GetUsersRichest(20)
 		richPeople := usersToRiches(users)
 		return msgUser(richPeople)
+	}
+
+	return tea.Tick(db.refreshRate, retrieve)
+}
+
+func (db db) retrieveTotalUsers() tea.Cmd {
+	retrieve := func(t time.Time) tea.Msg {
+		// TODO: Change this to the correct method
+		users, _ := db.store.GetMoneyTotal()
+		return msgTotalUsers(users)
 	}
 
 	return tea.Tick(db.refreshRate, retrieve)
