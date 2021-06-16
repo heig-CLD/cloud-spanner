@@ -47,21 +47,27 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case msgUser:
 		m.richPeople = msg
+		return m, m.db.tick(m.db.retrieveUsers)
 
 	case msgTotalUsers:
 		m.overview.totalUsers = int64(msg)
+		return m, m.db.tick(m.db.retrieveTotalUsers)
 
 	case msgTotalMoney:
 		m.overview.totalMoney = int64(msg)
+		return m, m.db.tick(m.db.retrieveTotalMoney)
 
 	case msgRichest:
 		m.overview.richest = int64(msg)
+		return m, m.db.tick(m.db.retrieveRichest)
 
 	case msgPoorest:
 		m.overview.poorest = int64(msg)
+		return m, m.db.tick(m.db.retrievePoorest)
 
 	case msgTransactions:
 		m.transactions.strong = msg
+		return m, m.db.tick(m.db.retrieveTransactions)
 	}
 
 	return m, nil

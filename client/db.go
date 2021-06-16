@@ -27,7 +27,7 @@ type msgReschedule func() tea.Cmd
 
 func (db db) tick(f func() tea.Msg) tea.Cmd {
 	return tea.Tick(db.refreshRate, func(time.Time) tea.Msg {
-		return f
+		return f()
 	})
 }
 
