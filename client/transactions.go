@@ -41,8 +41,8 @@ func (transactions Transactions) View() string {
 		content = append(content, t.View())
 	}
 
-	bodyStyle := lipgloss.NewStyle()
-	bodyString := lipgloss.JoinHorizontal(
+	bodyStyle := lipgloss.NewStyle().Padding(0, 1)
+	bodyString := lipgloss.JoinVertical(
 		0,
 		content...,
 	)
@@ -79,15 +79,16 @@ func statHeader(transactionType string, amount int64) string {
 }
 
 func (t transaction) View() string {
+	timeStyle := lipgloss.NewStyle().Width(24)
 	style := lipgloss.NewStyle().Width(14)
-	smallStyle := lipgloss.NewStyle().Width(3)
+	smallStyle := lipgloss.NewStyle().Width(3).MarginRight(5)
 
-	time := t.timestamp.Format(time.RFC1123)
+	time := t.timestamp.Format(time.RFC822)
 	amount := fmt.Sprintf("%d $", t.amount)
 
 	content := lipgloss.JoinHorizontal(
 		0,
-		style.Render(time),
+		timeStyle.Render(time),
 		style.Render(t.from),
 		smallStyle.Render("->"),
 		style.Render(t.to),

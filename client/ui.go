@@ -33,6 +33,7 @@ func (m model) Init() tea.Cmd {
 		m.db.retrieveRichest(),
 		m.db.retrievePoorest(),
 		m.db.retrieveUsers(),
+		m.db.retrieveTransactions(),
 	)
 }
 
@@ -63,6 +64,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case msgPoorest:
 		m.overview.poorest = int64(msg)
 		return m, m.db.retrievePoorest()
+
+	case msgTransactions:
+		m.transactions.strong = msg
+		return m, m.db.retrieveTransactions()
 	}
 
 	return m, nil

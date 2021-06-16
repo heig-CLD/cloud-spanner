@@ -30,7 +30,7 @@ func StartClient() {
 		store: database.NewDatabase(ctx, client),
 
 		// The refresh rate is the same for all queries
-		refreshRate: 300 * time.Millisecond,
+		refreshRate: 500 * time.Millisecond,
 	}
 
 	// Tea stuff
