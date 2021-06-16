@@ -57,6 +57,16 @@ func (db db) retrievePoorest() tea.Msg {
 	return msgPoorest(money)
 }
 
+func (db db) retrieveStrongTransactionsCount() tea.Msg {
+	amount, _ := db.store.GetTransfersCount(spanner.StrongRead())
+	return msgStrongTransactionTotal(amount)
+}
+
+func (db db) retrieveStaleTransactionsCount() tea.Msg {
+	amount, _ := db.store.GetTransfersCount(spanner.ExactStaleness(15 * time.Second))
+	return msgStaleTransactionTotal(amount)
+}
+
 func (db db) retrieveTransactions() tea.Msg {
 	transfers, _ := db.store.GetTransfersLatest(17, spanner.StrongRead())
 

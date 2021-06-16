@@ -34,6 +34,8 @@ func (m model) Init() tea.Cmd {
 		m.db.tick(m.db.retrievePoorest),
 		m.db.tick(m.db.retrieveUsers),
 		m.db.tick(m.db.retrieveTransactions),
+		m.db.tick(m.db.retrieveStaleTransactionsCount),
+		m.db.tick(m.db.retrieveStrongTransactionsCount),
 	)
 }
 
@@ -68,6 +70,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case msgTransactions:
 		m.transactions.strong = msg
 		return m, m.db.tick(m.db.retrieveTransactions)
+
+	case msgStrongTransactionTotal:
+		m.transactions.strongAmount = int64(msg)
+		return m, m.db.tick(m.db.retrieveStrongTransactionsCount)
+
+	case msgStaleTransactionTotal:
+		m.transactions.staleAmount = int64(msg)
+		return m, m.db.tick(m.db.retrieveStaleTransactionsCount)
+
 	}
 
 	return m, nil
