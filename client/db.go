@@ -23,7 +23,6 @@ type msgPoorest int64
 type msgTransactions []transaction
 type msgStrongTransactionTotal int64
 type msgStaleTransactionTotal int64
-type msgReschedule func() tea.Cmd
 
 func (db db) tick(f func() tea.Msg) tea.Cmd {
 	return tea.Tick(db.refreshRate, func(time.Time) tea.Msg {
