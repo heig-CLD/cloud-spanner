@@ -8,6 +8,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -30,8 +32,9 @@ func StartServer() {
 
 	scanner := bufio.NewScanner(os.Stdin)
 	helpText := "Available commands are:\n" +
-		"- \"init\": Cleans DB and populates it\n" +
-		"- \"go\": Launches simulation\n" +
+		"- \"init\": Cleans DB and populates it with 20 users\n" +
+		"- \"populate n\": Adds n users to the database\n" +
+		"- \"launch\": Launches simulation\n" +
 		"- \"start\": Cleans DB, populates it and starts simulation. Equivalent to <init, launch>\n" +
 		"- \"show\": Shows DB content\n" +
 		"- \"clear\": Clears DB content\n" +
@@ -44,21 +47,34 @@ func StartServer() {
 	for {
 		fmt.Print("$ ")
 		scanner.Scan()
-		switch scanner.Text() {
-		case "init":
-			server.init()
-		case "launch":
-			server.launch()
-		case "start":
-			server.start()
-		case "show":
-			server.show()
-		case "clear":
-			server.clear()
-		case "stop":
-			server.stop()
-		default:
-			fmt.Println("Unrecognized command... " + helpText)
+		if splits := strings.Split(scanner.Text(), " "); len(splits) > 0 {
+			switch splits[0] {
+			case "init":
+				server.init()
+			case "launch":
+				server.launch()
+			case "start":
+				server.start()
+			case "populate":
+				if len(splits) < 2 {
+					fmt.Println("Please provide a count of users.")
+					continue
+				}
+				count, err := strconv.Atoi(splits[1])
+				if err != nil {
+					fmt.Println("Unknown number.")
+					continue
+				}
+				server.populate(count)
+			case "show":
+				server.show()
+			case "clear":
+				server.clear()
+			case "stop":
+				server.stop()
+			default:
+				fmt.Println("Unrecognized command... " + helpText)
+			}
 		}
 	}
 }
@@ -89,11 +105,11 @@ func (s *server) withDatabase(op func(db database.Database)) {
 	op(database.NewDatabase(s.context, s.client))
 }
 
-func (s *server) populate() {
+func (s *server) populate(count int) {
 	s.withDatabase(func(db database.Database) {
-		users := randomUsers(n, maxMoney)
+		users := randomUsers(count, maxMoney)
 		_ = db.AddUsers(users)
-		fmt.Printf("Added %d new users to the database.\n", n)
+		fmt.Printf("Added %d new users to the database.\n", count)
 	})
 }
 
