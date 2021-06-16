@@ -4,6 +4,7 @@ import (
 	"cloud-spanner/shared"
 	"cloud.google.com/go/spanner"
 	"context"
+	"time"
 )
 
 type database struct {
@@ -11,10 +12,21 @@ type database struct {
 	client *spanner.Client
 }
 
+type Transfer struct {
+	Amount    int64
+	Timestamp time.Time
+	FromId    []byte
+	From      string
+	ToId      []byte
+	To        string
+}
+
 type Database interface {
 	// Clear removes the contents of the database, by deleting all the rows in
 	// the Users, Items and Offers tables.
 	Clear() error
+
+	GetUsersCount() (int, error)
 
 	// GetUsersRichest returns the richest users. Only `limit` users are
 	// returned.
@@ -25,6 +37,9 @@ type Database interface {
 	GetMoneyMin() (int64, error)
 
 	AddUsers(users []shared.User) error
+
+	GetTransfersCount(bound spanner.TimestampBound) (int, error)
+	GetTransfersLatest(limit int, bound spanner.TimestampBound) ([]Transfer, error)
 }
 
 func NewDatabase(ctx context.Context, client *spanner.Client) Database {
@@ -107,4 +122,35 @@ func (db *database) AddUsers(users []shared.User) error {
 	}
 	_, err := db.client.ReadWriteTransaction(db.ctx, t)
 	return err
+}
+
+func (db *database) GetUsersCount() (int, error) {
+	return 42, nil
+}
+
+func (db *database) GetTransfersCount(bound spanner.TimestampBound) (int, error) {
+	if bound == spanner.StrongRead() {
+		return 15, nil
+	}
+	return 10, nil
+}
+
+func (db *database) GetTransfersLatest(limit int, bound spanner.TimestampBound) ([]Transfer, error) {
+	t1 := Transfer{
+		Amount:    123,
+		Timestamp: time.Now(),
+		From:      "Salut",
+		FromId:    make([]byte, 0),
+		To:        "Le monde",
+		ToId:      make([]byte, 0),
+	}
+	t2 := Transfer{
+		Amount:    125,
+		Timestamp: time.Now(),
+		From:      "Marcel",
+		FromId:    make([]byte, 0),
+		To:        "Rémi",
+		ToId:      make([]byte, 0),
+	}
+	return []Transfer{t1, t2}, nil
 }
