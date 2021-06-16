@@ -1,7 +1,6 @@
 package client
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 
@@ -13,23 +12,6 @@ type Rich struct {
 	percentOfAllMoney float64
 	name              string
 	progress          *progress.Model
-}
-
-func getAllNames() ([]string, error) {
-	file, err := os.Open("shared/names.txt")
-	if err != nil {
-		return nil, err
-	}
-
-	scanner := bufio.NewScanner(file)
-	scanner.Split(bufio.ScanLines)
-
-	var allNames []string
-	for scanner.Scan() {
-		allNames = append(allNames, scanner.Text())
-	}
-
-	return allNames, nil
 }
 
 func InitializeRich(name string, percent float64) Rich {
