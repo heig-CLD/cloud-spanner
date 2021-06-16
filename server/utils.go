@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"cloud-spanner/shared"
 	"cloud-spanner/shared/database"
+	"cloud.google.com/go/spanner"
 	"encoding/binary"
 	"fmt"
 	"github.com/google/uuid"
@@ -72,5 +73,17 @@ func showUsers(store database.Database) {
 	}
 	for _, user := range users {
 		println("User - Name: " + user.Name + " Money: " + strconv.FormatInt(user.Money, 10) + " Id: " + idAsString(user.Id))
+	}
+}
+
+func showTransfers(store database.Database) {
+	transfers, err := store.GetTransfersLatest(10, spanner.StrongRead())
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "%s when reading users.\n", err.Error())
+		return
+	}
+	for _, t := range transfers {
+		timestamp := t.Timestamp.Format(time.RFC1123)
+		fmt.Printf("[%s] %s -> %s : %d$ \n", timestamp, t.FromName, t.ToName, t.Amount)
 	}
 }

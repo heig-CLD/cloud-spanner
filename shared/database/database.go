@@ -16,12 +16,13 @@ type database struct {
 }
 
 type Transfer struct {
+	Id        []byte
 	Amount    int64
 	Timestamp time.Time
 	FromId    []byte
-	From      string
+	FromName  string
 	ToId      []byte
-	To        string
+	ToName    string
 }
 
 type Database interface {
@@ -156,23 +157,33 @@ func (db *database) GetTransfersCount(bound spanner.TimestampBound) (int64, erro
 }
 
 func (db *database) GetTransfersLatest(limit int, bound spanner.TimestampBound) ([]Transfer, error) {
-	t1 := Transfer{
-		Amount:    123,
-		Timestamp: time.Now(),
-		From:      "Salut",
-		FromId:    make([]byte, 0),
-		To:        "Le monde",
-		ToId:      make([]byte, 0),
-	}
-	t2 := Transfer{
-		Amount:    125,
-		Timestamp: time.Now(),
-		From:      "Marcel",
-		FromId:    make([]byte, 0),
-		To:        "Rémi",
-		ToId:      make([]byte, 0),
-	}
-	return []Transfer{t1, t2}, nil
+	statement := spanner.Statement{
+		SQL: "SELECT" +
+			" u1.Id AS FromId," +
+			" u2.Id AS ToId," +
+			" u1.Name AS FromName," +
+			" u2.Name AS ToName," +
+			" t.AtTimestamp AS Timestamp," +
+			" t.Id AS Id," +
+			" t.Amount AS Amount FROM Transfers t" +
+			" JOIN Users u1 ON t.FromUserId = u1.Id" +
+			" JOIN Users u2 ON t.ToUserId = u2.Id" +
+			" ORDER BY AtTimestamp DESC" +
+			" LIMIT @limit",
+		Params: map[string]interface{}{
+			"limit": limit,
+		}}
+	transfers := make([]Transfer, 0)
+	err := db.client.Single().
+		WithTimestampBound(bound).
+		Query(db.ctx, statement).
+		Do(func(row *spanner.Row) error {
+			var transfer Transfer
+			err := row.ToStruct(&transfer)
+			transfers = append(transfers, transfer)
+			return err
+		})
+	return transfers, err
 }
 
 // TaxesAmount indicates what percentage of a user's net worth may be

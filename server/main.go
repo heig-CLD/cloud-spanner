@@ -164,5 +164,7 @@ func (s *server) clear() {
 
 func (s *server) show() {
 	fmt.Println("DB Content:")
-	showUsers(database.NewDatabase(s.context, s.client))
+	db := database.NewDatabase(s.context, s.client)
+	showUsers(db)
+	showTransfers(db)
 }
