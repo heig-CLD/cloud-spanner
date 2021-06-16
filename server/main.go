@@ -3,6 +3,7 @@ package server
 import (
 	"bufio"
 	"cloud-spanner/shared"
+	"cloud-spanner/shared/database"
 	"cloud.google.com/go/spanner"
 	"context"
 	"fmt"
@@ -21,8 +22,6 @@ func StartServer() {
 	project := shared.LocalConfig()
 	background := context.Background()
 
-	launchContext, launchCancel := context.WithCancel(background)
-
 	client, err := spanner.NewClient(background, project.Uri())
 	if err != nil {
 		panic(err)
@@ -39,50 +38,82 @@ func StartServer() {
 		"- \"stop\": Stops simulation"
 
 	fmt.Println(helpText)
+
+	server := create(client)
+
 	for {
 		fmt.Print("$ ")
 		scanner.Scan()
 		switch scanner.Text() {
 		case "init":
-			initDB(background, client, n, maxMoney)
+			server.init()
 		case "launch":
-			launchCancel()
-			launchContext, launchCancel = context.WithCancel(background)
-			launch(launchContext, client)
+			server.launch()
 		case "start":
-			launchCancel()
-			launchContext, launchCancel = context.WithCancel(background)
-			start(background, launchContext, client, n, maxMoney)
+			server.start()
 		case "show":
-			showDB(background, client)
+			server.show()
 		case "clear":
-			clearDB(background, client)
+			server.clear()
 		case "stop":
-			stop(launchCancel)
+			server.stop()
 		default:
 			fmt.Println("Unrecognized command... " + helpText)
 		}
 	}
 }
 
-func initDB(ctx context.Context, client *spanner.Client, n int, maxMoney int64) {
-	deleteDBContent(ctx, client)
-	_, err := createUsers(ctx, client, n, maxMoney)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("DB cleared & repopulated")
+type server struct {
+	background context.Context
+
+	context    context.Context
+	cancelFunc context.CancelFunc
+
+	client *spanner.Client
 }
 
-func launch(ctx context.Context, client *spanner.Client) {
+// create returns a new server
+func create(spanner *spanner.Client) server {
+	bg := context.Background()
+	ctx, can := context.WithCancel(bg)
+	return server{
+		background: bg,
+		context:    ctx,
+		cancelFunc: can,
+		client:     spanner,
+	}
+}
+
+// withDatabase executes an operation with the current database
+func (s *server) withDatabase(op func(db database.Database)) {
+	op(database.NewDatabase(s.context, s.client))
+}
+
+func (s *server) populate() {
+	s.withDatabase(func(db database.Database) {
+		users := randomUsers(n, maxMoney)
+		_ = db.AddUsers(users)
+		fmt.Printf("Added %d new users to the database.\n", n)
+	})
+}
+
+func (s *server) init() {
+	s.withDatabase(func(db database.Database) {
+		_ = db.Clear()
+		users := randomUsers(n, maxMoney)
+		_ = db.AddUsers(users)
+	})
+}
+
+func (s *server) launch() {
+	s.cancel()
 	fmt.Println("Launching simulation")
+	ctx := s.context
 	go func() {
 		for {
 			select {
 			case <-time.After(refresh):
-				if err := TransferRandomly(ctx, client); err != nil {
-					fmt.Println(err)
-				}
+				_ = TransferRandomly(ctx, s.client)
 			case <-ctx.Done():
 				return
 			}
@@ -90,24 +121,33 @@ func launch(ctx context.Context, client *spanner.Client) {
 	}()
 }
 
-func start(initCtx context.Context, launchCtx context.Context, client *spanner.Client, n int, maxMoney int64) {
-	initDB(initCtx, client, n, maxMoney)
-	launch(launchCtx, client)
+func (s *server) cancel() {
+	s.cancelFunc()
+	ctx, can := context.WithCancel(s.background)
+	s.context = ctx
+	s.cancelFunc = can
 }
 
-func stop(cancel func()) {
+func (s *server) start() {
+	s.init()
+	s.launch()
+}
+
+func (s *server) stop() {
 	fmt.Println("Stopping simulation")
-	cancel()
+	s.cancel()
 }
 
-func showDB(ctx context.Context, client *spanner.Client) {
+func (s *server) clear() {
+	s.withDatabase(func(db database.Database) {
+		_ = db.Clear()
+		fmt.Println("Cleared DB...")
+	})
+}
+
+func (s *server) show() {
 	fmt.Println("DB Content:")
-	showUsers(ctx, client)
-	showItems(ctx, client)
-	showOffers(ctx, client)
-}
-
-func clearDB(ctx context.Context, client *spanner.Client) {
-	deleteDBContent(ctx, client)
-	fmt.Println("Cleared DB...")
+	showUsers(database.NewDatabase(s.context, s.client))
+	showItems(s.context, s.client)
+	showOffers(s.context, s.client)
 }

@@ -2,16 +2,14 @@ package client
 
 import (
 	"cloud-spanner/shared"
-	"context"
+	"cloud-spanner/shared/database"
 	"time"
 
-	"cloud.google.com/go/spanner"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 type db struct {
-	ctx    context.Context
-	client *spanner.Client
+	store database.Database
 
 	refreshRate time.Duration
 }
@@ -23,7 +21,7 @@ type msgPoorest int64
 
 func (db db) retrieveUsers() tea.Cmd {
 	retrieve := func(t time.Time) tea.Msg {
-		users := db.getUsers()
+		users, _ := db.store.GetUsersRichest(20)
 		richPeople := usersToRiches(users)
 		return msgUser(richPeople)
 	}
@@ -33,7 +31,7 @@ func (db db) retrieveUsers() tea.Cmd {
 
 func (db db) retrieveTotalMoney() tea.Cmd {
 	retrieve := func(t time.Time) tea.Msg {
-		money, _ := shared.AggregateMoney(shared.Sum, db.ctx, db.client)
+		money, _ := db.store.GetMoneyTotal()
 		return msgTotalMoney(money)
 	}
 
@@ -42,7 +40,7 @@ func (db db) retrieveTotalMoney() tea.Cmd {
 
 func (db db) retrieveRichest() tea.Cmd {
 	retrieve := func(t time.Time) tea.Msg {
-		money, _ := shared.AggregateMoney(shared.Max, db.ctx, db.client)
+		money, _ := db.store.GetMoneyMax()
 		return msgRichest(money)
 	}
 
@@ -51,25 +49,11 @@ func (db db) retrieveRichest() tea.Cmd {
 
 func (db db) retrievePoorest() tea.Cmd {
 	retrieve := func(t time.Time) tea.Msg {
-		money, _ := shared.AggregateMoney(shared.Min, db.ctx, db.client)
+		money, _ := db.store.GetMoneyMin()
 		return msgPoorest(money)
 	}
 
 	return tea.Tick(db.refreshRate, retrieve)
-}
-
-func (db db) getUsers() []shared.User {
-	var users []shared.User
-
-	iterator := db.client.Single().Query(db.ctx, spanner.NewStatement("SELECT * FROM Users ORDER BY Money DESC"))
-	iterator.Do(func(row *spanner.Row) error {
-		var user shared.User
-		row.ToStruct(&user)
-		users = append(users, user)
-		return nil
-	})
-
-	return users
 }
 
 func usersToRiches(users []shared.User) []Rich {

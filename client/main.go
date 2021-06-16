@@ -2,6 +2,7 @@ package client
 
 import (
 	"cloud-spanner/shared"
+	"cloud-spanner/shared/database"
 	"context"
 	"fmt"
 	"os"
@@ -26,8 +27,7 @@ func StartClient() {
 	defer client.Close()
 
 	db := db{
-		ctx:    ctx,
-		client: client,
+		store: database.NewDatabase(ctx, client),
 
 		// The refresh rate is the same for all queries
 		refreshRate: 300 * time.Millisecond,
